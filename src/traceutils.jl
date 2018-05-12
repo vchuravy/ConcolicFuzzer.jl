@@ -75,3 +75,15 @@ function verify(t::Trace, merciless=false)
     return nothing
 end
 
+function Base.print(io::IO, t::Trace)
+    println(io, "Trace:")
+    recurse(t) do call
+        base = " "^call.depth
+        write(io, base)
+        print(io, call.retval)
+        write(io, " <- ")
+        println(io, call.f, call.args)
+        return
+    end
+    return nothing
+end
