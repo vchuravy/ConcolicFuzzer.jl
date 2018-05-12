@@ -243,6 +243,10 @@ end
     val, symb, trace = concolic_execution(propagate, 10);
     @test val == 10
     @test symb == true
+
+    range() = 1:10
+    val, symb, trace = concolic_execution(range);
+    @test symb == false
 end
 
 # @testset "Arrays" begin
@@ -254,28 +258,50 @@ end
 #  end
 # end
 
-# @testset "Complex Loops" begin
-#     function h0(x)
-#         acc = 0
-#         for i in 1:10
-#             acc += x
-#         end
-#         return acc
-#     end
+@testset "Complex Loops" begin
+    function h0()
+        acc = 0
+        for i in 1:10
+            acc += 1
+        end
+        return acc
+    end
 
-#     function h1(x)
-#         acc = 0
-#         for i in 1:x
-#             acc += 1
-#         end
-#         return acc
-#     end
+    val, symb, trace = concolic_execution(h0);
+    @test val == 10
+    @test symb == false
 
-#     function h2(x)
-#         acc = 0
-#         for i in 1:x
-#             acc += i
-#         end
-#         return acc
-#     end
-# end
+    function h1(x)
+        acc = 0
+        for i in 1:10
+            acc += x
+        end
+        return acc
+    end
+
+    val, symb, trace = concolic_execution(h1, 1);
+    @test val == 10
+    @test symb == true
+    @test length(ConcolicFuzzer.filter(trace)) == 10
+
+    function h2(N)
+        acc = 0
+        for i in 1:N
+            acc += 1
+        end
+        return acc
+    end
+
+    val, symb, trace = concolic_execution(h2, 10);
+    @test val == 10
+    @test symb == false
+    # @test length(ConcolicFuzzer.filter(trace)) == 22
+
+    # function h3(x)
+    #     acc = 0
+    #     for i in 1:x
+    #         acc += i
+    #     end
+    #     return acc
+    # end
+end

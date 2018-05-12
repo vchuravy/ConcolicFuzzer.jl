@@ -22,41 +22,104 @@ const LEAF_FUNCTIONS = [
     (Base.:>, 2),
     (Base.:>=, 2),
     (Base.:(==), 2),
+    (Base.ifelse, 3),
 ]
 
 for (f, arity) in LEAF_FUNCTIONS
     if arity == 1
         @eval begin
-            Cassette.@primitive function (::typeof($f))(x::@Box) where {__CONTEXT__<:TraceCtx}
+            Cassette.@primitive function (::typeof($f))(x::@Box(Any, Sym)) where {__CONTEXT__<:TraceCtx}
                 ctx = __trace__.context
                 vx, sx = Cassette.unbox(ctx, x), Cassette.meta(ctx, x)
                 vv = $f(vx)
-                sv = Sym(Base.gensym(), typeof(vv))
+                sv = sx == Cassette.unused ? Cassette.unused : Sym(Base.gensym(), typeof(vv))
                 return Cassette.Box(ctx, vv, sv)
             end
         end
     elseif arity == 2
         @eval begin
-            Cassette.@primitive function (::typeof($f))(x::@Box, y::@Box) where {__CONTEXT__<:TraceCtx}
+            Cassette.@primitive function (::typeof($f))(x::@Box(Any, Sym), y::@Box(Any, Sym)) where {__CONTEXT__<:TraceCtx}
                 ctx = __trace__.context
                 vx, sx = Cassette.unbox(ctx, x), Cassette.meta(ctx, x)
                 vy, sy = Cassette.unbox(ctx, y), Cassette.meta(ctx, y)
+                both_unused = sx == Cassette.unused && sy == Cassette.unused
                 vv = $f(vx, vy)
-                sv = Sym(Base.gensym(), typeof(vv))
+                sv = both_unused ? Cassette.unused : Sym(Base.gensym(), typeof(vv))
                 return Cassette.Box(ctx, vv, sv)
             end
-            Cassette.@primitive function (::typeof($f))(x::@Box, vy) where {__CONTEXT__<:TraceCtx}
+            Cassette.@primitive function (::typeof($f))(x::@Box(Any, Sym), vy) where {__CONTEXT__<:TraceCtx}
                 ctx = __trace__.context
                 vx, sx = Cassette.unbox(ctx, x), Cassette.meta(ctx, x)
                 vv = $f(vx, vy)
-                sv = Sym(Base.gensym(), typeof(vv))
+                sv = sx == Cassette.unused ? Cassette.unused : Sym(Base.gensym(), typeof(vv))
                 return Cassette.Box(ctx, vv, sv)
             end
-            Cassette.@primitive function (::typeof($f))(vx, y::@Box) where {__CONTEXT__<:TraceCtx}
+            Cassette.@primitive function (::typeof($f))(vx, y::@Box(Any, Sym)) where {__CONTEXT__<:TraceCtx}
                 ctx = __trace__.context
                 vy, sy = Cassette.unbox(ctx, y), Cassette.meta(ctx, y)
                 vv = $f(vx, vy)
-                sv = Sym(Base.gensym(), typeof(vv))
+                sv = sy == Cassette.unused ? Cassette.unused : Sym(Base.gensym(), typeof(vv))
+                return Cassette.Box(ctx, vv, sv)
+            end
+        end
+    elseif arity == 3
+        @eval begin
+            Cassette.@primitive function (::typeof($f))(x::@Box(Any, Sym), y::@Box(Any, Sym), z::@Box(Any, Sym)) where {__CONTEXT__<:TraceCtx}
+                ctx = __trace__.context
+                vx, sx = Cassette.unbox(ctx, x), Cassette.meta(ctx, x)
+                vy, sy = Cassette.unbox(ctx, y), Cassette.meta(ctx, y)
+                vz, sz = Cassette.unbox(ctx, z), Cassette.meta(ctx, z)
+                unused = sx == Cassette.unused && sy == Cassette.unused && sz == Cassette.unused
+                vv = $f(vx, vy, vz)
+                sv = unused ? Cassette.unused : Sym(Base.gensym(), typeof(vv))
+                return Cassette.Box(ctx, vv, sv)
+            end
+            Cassette.@primitive function (::typeof($f))(x::@Box(Any, Sym), y::@Box(Any, Sym), vz) where {__CONTEXT__<:TraceCtx}
+                ctx = __trace__.context
+                vx, sx = Cassette.unbox(ctx, x), Cassette.meta(ctx, x)
+                vy, sy = Cassette.unbox(ctx, y), Cassette.meta(ctx, y)
+                unused = sx == Cassette.unused && sy == Cassette.unused
+                vv = $f(vx, vy, vz)
+                sv = unused ? Cassette.unused : Sym(Base.gensym(), typeof(vv))
+                return Cassette.Box(ctx, vv, sv)
+            end
+            Cassette.@primitive function (::typeof($f))(x::@Box(Any, Sym), vy, z::@Box(Any, Sym)) where {__CONTEXT__<:TraceCtx}
+                ctx = __trace__.context
+                vx, sx = Cassette.unbox(ctx, x), Cassette.meta(ctx, x)
+                vz, sz = Cassette.unbox(ctx, z), Cassette.meta(ctx, z)
+                unused = sx == Cassette.unused && sz == Cassette.unused
+                vv = $f(vx, vy, vz)
+                sv = unused ? Cassette.unused : Sym(Base.gensym(), typeof(vv))
+                return Cassette.Box(ctx, vv, sv)
+            end
+            Cassette.@primitive function (::typeof($f))(vx, y::@Box(Any, Sym), z::@Box(Any, Sym)) where {__CONTEXT__<:TraceCtx}
+                ctx = __trace__.context
+                vy, sy = Cassette.unbox(ctx, y), Cassette.meta(ctx, y)
+                vz, sz = Cassette.unbox(ctx, z), Cassette.meta(ctx, z)
+                unused = sy == Cassette.unused && sz == Cassette.unused
+                vv = $f(vx, vy, vz)
+                sv = unused ? Cassette.unused : Sym(Base.gensym(), typeof(vv))
+                return Cassette.Box(ctx, vv, sv)
+            end
+            Cassette.@primitive function (::typeof($f))(x::@Box(Any, Sym), vy, vz) where {__CONTEXT__<:TraceCtx}
+                ctx = __trace__.context
+                vx, sx = Cassette.unbox(ctx, x), Cassette.meta(ctx, x)
+                vv = $f(vx, vy, vz)
+                sv = sx == Cassette.unused ? Cassette.unused : Sym(Base.gensym(), typeof(vv))
+                return Cassette.Box(ctx, vv, sv)
+            end
+            Cassette.@primitive function (::typeof($f))(vx, y::@Box(Any, Sym), vz) where {__CONTEXT__<:TraceCtx}
+                ctx = __trace__.context
+                vy, sy = Cassette.unbox(ctx, y), Cassette.meta(ctx, y)
+                vv = $f(vx, vy, vz)
+                sv = sy == Cassette.unused ? Cassette.unused : Sym(Base.gensym(), typeof(vv))
+                return Cassette.Box(ctx, vv, sv)
+            end
+            Cassette.@primitive function (::typeof($f))(vx, vy, z::@Box(Any, Sym)) where {__CONTEXT__<:TraceCtx}
+                ctx = __trace__.context
+                vz, sz = Cassette.unbox(ctx, z), Cassette.meta(ctx, z)
+                vv = $f(vx, vy, vz)
+                sv = sz == Cassette.unused ? Cassette.unused : Sym(Base.gensym(), typeof(vv))
                 return Cassette.Box(ctx, vv, sv)
             end
         end

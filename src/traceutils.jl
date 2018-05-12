@@ -40,6 +40,13 @@ function filter(t::Trace)
 end
 
 
+const FUNCTIONS_TO_IGNORE =(
+    Base.one,
+    Base.zero,
+    assert,
+    prove,
+)
+
 """
     verify(trace, merciless=false)
 
@@ -54,7 +61,7 @@ function verify(t::Trace, merciless=false)
             if typeof(call.f) <: Core.Builtin && !merciless
                 return
             end
-            if call.f == assert || call.f == prove || call.f == topmost
+            if call.f == topmost || call.f ∈ FUNCTIONS_TO_IGNORE
                 return
             end
             # Not sure why these occur

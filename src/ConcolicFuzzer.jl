@@ -36,10 +36,12 @@ function concolic_execution(f, args...; rands = Any[])
     @assert isempty(trace.stack)
     verify(trace)
     if Cassette.isboxed(ctx, y)
-        return (Cassette.unbox(ctx, y), true, trace)
+        vy = Cassette.unbox(ctx, y)
     else
-        return (y, false, trace)
+        vy = y
     end
+    symb = Cassette.isboxed(ctx, y) && Cassette.meta(ctx, y) != Cassette.unused
+    return (vy, symb, trace)
 end
 
 include("z3.jl")

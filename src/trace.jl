@@ -20,7 +20,7 @@ end
 # Records when we enter a function and the arguments
 function enter!(t::Trace, ctx, f, args...)
     vargs = map(args) do x 
-        if x isa Cassette.Box
+        if Cassette.isboxed(ctx, x)
             return Cassette.meta(ctx, x)
         else
             return x
@@ -36,7 +36,7 @@ end
 
 # Records when we leave a function and the returnvalue
 function exit!(t::Trace, ctx, f, retval, args...)
-    vretval = if retval isa Cassette.Box
+    vretval = if Cassette.isboxed(ctx, retval)
         Cassette.meta(ctx, retval)
     else
         retval
