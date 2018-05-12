@@ -170,35 +170,88 @@ end
     @test val == 12
 end
 
-# @testset "Simple Loops" begin
-#     function hh0(x)
-#         acc = 0
-#         i = 1
-#         while i <= 10
-#             acc += x
-#         end
-#         acc
-#     end
+@testset "Simple Loops" begin
+    function hh0(x)
+        acc = 0
+        i = 1
+        while i <= 10
+            i += 1
+            acc += x
+        end
+        acc
+    end
+    val, symb, trace = concolic_execution(hh0, 1);
+    @test val == 10
+    @test symb == true
+    @test length(ConcolicFuzzer.filter(trace)) == 10
 
-#     function hh1(x)
-#         acc = 0
-#         i = 1
-#         while i <= x
-#             acc += 1
-#             i += 1
-#         end
-#         acc
-#     end
+    function hh1(x)
+        acc = 0
+        i = 1
+        while i <= x
+            acc += 1
+            i += 1
+        end
+        acc
+    end
 
-#     function hh2(x)
-#         acc = 0
-#         i = 1
-#         while i <= x
-#             acc += i
-#             i += 1
-#         end
-#         acc
-#     end
+    val, symb, trace = concolic_execution(hh1, 10);
+    @test val == 10
+    @test symb == false
+    @test length(ConcolicFuzzer.filter(trace)) == 22 
+end
+
+@testset "Fuzzing of loops" begin
+    # Simulate out_of_bounds
+    function out_of_bounds(N)
+        i = 1
+        while i <= N
+            @assert i <= 10
+            i +=  1
+        end
+        return i
+    end
+
+    tested, errored = fuzz_wargs(out_of_bounds, 0)
+
+    explored = collect(zip(tested...))
+    outs = explored[1]
+    args = explored[2]
+    rands = explored[3]
+
+    for i in 0:10
+        @test (i,) in args
+    end
+
+    failed = collect(zip(errored...))
+    args = failed[1]
+    outs = failed[2]
+    errors = failed[3]
+
+    @test length(errors) >= 1
+    @test first(errors) isa AssertionError
+end
+
+struct A
+    x::Int
+end
+@testset "Structs" begin
+    function propagate(x)
+        a = A(x)
+        return a.x
+    end
+    val, symb, trace = concolic_execution(propagate, 10);
+    @test val == 10
+    @test symb == true
+end
+
+# @testset "Arrays" begin
+# function store_and_read(x)
+#     A = Array{Int, 1}(10)
+#     A[5] = x
+#     x = 0 # Destroy symbol character of x
+#     return A[5]
+#  end
 # end
 
 # @testset "Complex Loops" begin
