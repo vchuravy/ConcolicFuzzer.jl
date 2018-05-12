@@ -4,6 +4,7 @@ mutable struct Callsite
     f::Any
     args::Any
     retval::Any
+    depth::Int
     children::Vector{Callsite}
 end
 
@@ -11,8 +12,9 @@ mutable struct Trace
     current::Vector{Callsite}
     stack::Vector{Vector{Callsite}}
     rands::Vector{Any}
-    Trace() = new(Callsite[], Callsite[], Any[])
-    Trace(rands) = new(Callsite[], Callsite[], rands)
+    current_depth::Int
+    Trace() = new(Callsite[], Callsite[], Any[], 0)
+    Trace(rands) = new(Callsite[], Callsite[], rands, 0)
 end
 
 # Records when we enter a function and the arguments
@@ -24,7 +26,8 @@ function enter!(t::Trace, ctx, f, args...)
             return x
         end
     end
-    callsite = Callsite(f, vargs, nothing, Callsite[])
+    t.current_depth += 1
+    callsite = Callsite(f, vargs, nothing, t.current_depth, Callsite[])
     push!(t.current, callsite)
     push!(t.stack, t.current)
     t.current = callsite.children
@@ -39,6 +42,7 @@ function exit!(t::Trace, ctx, f, retval, args...)
         retval
     end
     t.current = pop!(t.stack)
+    t.current_depth -= 1
     last(t.current).retval = vretval
     return nothing
 end
