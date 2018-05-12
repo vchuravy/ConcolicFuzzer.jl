@@ -163,6 +163,11 @@ end
         return 12
     end
 
+    val, symb, trace = concolic_execution(r3, rands = [3, 4]);
+    @test val == 42
+
+    val, symb, trace = concolic_execution(r3, rands = [10, 0]);
+    @test val == 12
 end
 
 # @testset "Simple Loops" begin
