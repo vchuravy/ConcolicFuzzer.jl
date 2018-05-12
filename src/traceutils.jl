@@ -48,7 +48,7 @@ function verify(t::Trace, merciless=false)
             if typeof(call.f) <: Core.Builtin && !merciless
                 return
             end
-            if call.f == assert
+            if call.f == assert || call.f == prove
                 return
             end
             # Not sure why these occur

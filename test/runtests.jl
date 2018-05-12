@@ -1,21 +1,9 @@
 using ConcolicFuzzer
 using Test 
 
-import ConcolicFuzzer: assert
+import ConcolicFuzzer: assert, prove
 
 @testset "Simple tests" begin
-    function f(x::Int)
-        @assert x < 10
-        y = x - 10
-        @assert y < 0
-        return y
-    end
-
-    val, symb, trace = concolic_execution(f, 1);
-
-    @test val == -9
-    @test symb == true
-    @test length(ConcolicFuzzer.flatten(trace)) == 5
 
     function f2(x)
         b = x < 10
@@ -30,18 +18,7 @@ import ConcolicFuzzer: assert
     @test symb == true
     @test length(ConcolicFuzzer.flatten(trace)) == 3
 
-    function f3(x)
-        assert(x<10)
-        y = x - 10
-        assert(y < 0)
-        return y
-    end
 
-    val, symb, trace = concolic_execution(f3, 1);
-
-    @test val == -9
-    @test symb == true
-    @test length(ConcolicFuzzer.flatten(trace)) ==5 
 
 
     sanity_f1(x) = x * 2
@@ -61,7 +38,34 @@ import ConcolicFuzzer: assert
     @test symb
 end
 
+@testset "Check" begin
+    function f3(x)
+        assert(x<10)
+        y = x - 10
+        prove(y < 0)
+        return y
+    end
+
+    # any input works as long as we don't need to hit any branches
+    sat, inputs = check(f3, 1)
+    @test sat == false
+end
+
+
 @testset "Branches" begin
+    function f(x::Int)
+        @assert x < 10
+        y = x - 10
+        @assert y < 0
+        return y
+    end
+
+    val, symb, trace = concolic_execution(f, 1);
+
+    @test val == -9
+    @test symb == true
+    @test length(ConcolicFuzzer.flatten(trace)) == 5
+
     function g(x)
         if x < 10
             return 12

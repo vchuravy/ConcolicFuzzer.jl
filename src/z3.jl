@@ -86,11 +86,15 @@ function symbolic(stream)
 
     for (f, ret, args) in stream
         z3args = join(map(getZ3, args), " ")
-        if f == assert
+        if f == assert || f == prove
             @assert length(args) == 1
             @assert ret isa Bool
             z3ret = toZ3(ret)
-            stmt = "(assert (= $z3args $(z3ret)))"
+            stmt = "(= $z3args $(z3ret))"
+            if f == prove
+                stmt = "(not $stmt)"
+            end
+            stmt = "(assert $stmt)"
         else
             @assert ret isa Sym
             z3f = toZ3(f)

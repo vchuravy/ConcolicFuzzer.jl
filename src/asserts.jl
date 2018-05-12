@@ -1,6 +1,45 @@
-assert(x::Bool) = x
 
+"""
+    assert(x::Bool)
+
+Assert that the condition generating `x` holds true.
+Returns `x`
+
+"""
+assert(x::Bool) = x 
 Cassette.@primitive function assert(x::@Box) where {__CONTEXT__<:TraceCtx}
+    ctx = __trace__.context
+    return Cassette.unbox(ctx, x)
+end
+
+
+"""
+    prove(x::Bool)
+
+```julia
+assert(x < 10)
+y = x - 10
+prove(y < 0)
+```
+
+Will turn into the corresponding SMT2 program:
+
+```
+(declare-const x Int)
+(declare-const y Int)
+(assert (< x 10))
+(assert (= y (- x 10)))
+(assert (not (< y 0)))
+(check-sat)
+```
+
+If the model is not satisfiable, given the pre-condition defined by `assert`
+the post-condition given by `prove` holds.
+
+For more information see `check`.
+"""
+prove(x::Bool) = x
+Cassette.@primitive function prove(x::@Box) where {__CONTEXT__<:TraceCtx}
     ctx = __trace__.context
     return Cassette.unbox(ctx, x)
 end

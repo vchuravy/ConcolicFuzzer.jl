@@ -1,6 +1,6 @@
 module ConcolicFuzzer
 
-export concolic_execution, fuzz, fuzz_wargs
+export concolic_execution, check, fuzz, fuzz_wargs
 
 # Cassette is a non-standard execution engine for Julia
 # It allows for contextualised execution. I use Cassette to generate
@@ -44,5 +44,17 @@ end
 
 include("z3.jl")
 include("fuzzer.jl")
+
+"""
+    check(f, args...)
+
+Given a `f` that uses manually inserted `assert` and `prove` statements.
+Check if the symbolic part of the trace is satisfiable or not.
+"""
+function check(f, args...)
+    _, _, trace = concolic_execution(f, args...)
+    stream = filter(trace)
+    return checkStream(stream)
+end
 
 end # module
