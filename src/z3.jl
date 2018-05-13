@@ -143,16 +143,26 @@ function symbolic(stream)
 end
 
 function runZ3(model)
-    input = Pipe()
+    tinput = Pipe()
     output = Pipe()
-    run(pipeline(`z3 -smt2 -in`, stdin=input, stdout=output), wait=false)
+    run(pipeline(`z3 -smt2 -in`, stdin=tinput, stdout=output), wait=false)
+    input = IOBuffer()
+    println(input, "(set-option :pp.bv-literals false)")
     write(input, model)
     write(input, "(check-sat)\n")
     write(input, "(get-model)\n")
-    close(input)
+    seekstart(input)
+    @debug begin
+        z3input = read(input, String)
+        seekstart(input)
+        "Z3 input" model=z3input
+    end
+    write(tinput, input)
+    close(tinput)
     close(output.in)
     sat = readline(output)
     model = read(output, String)
+    @debug "Z3 output" sat model
     return (sat == "sat", model)
 end
 
@@ -258,6 +268,10 @@ function parseZ3(model)
         end
         m = match(r_others, name)
         if m !== nothing
+            T = stringToType(m.captures[1])
+            if T <: Integer
+                val = val % T
+            end
             push!(others, (name, val))
             continue
         end

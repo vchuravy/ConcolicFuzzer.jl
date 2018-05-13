@@ -76,10 +76,10 @@ end
 function Base.print(io::IO, t::Trace)
     println(io, "Trace:")
     recurse(t) do call
-        base = " "^call.depth
+        base = "  "^call.depth
         write(io, base)
         print(io, call.retval)
-        write(io, " <- ")
+        write(io, " ⇐ ")
         println(io, call.f, call.args)
         return
     end

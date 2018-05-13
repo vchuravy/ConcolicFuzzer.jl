@@ -50,7 +50,7 @@ end
     # Underflow possible at -9223372036854775808
     @test sat == true
 
-    function f3(x)
+    function f4(x)
         assert(0<x<10)
         y = x - 10
         prove(y < 0)
@@ -58,7 +58,7 @@ end
     end
 
     # any input works as long as we don't need to hit any branches
-    sat, inputs = check(f3, 1)
+    sat, inputs = check(f4, 1)
     @test sat == false
 end
 
@@ -235,12 +235,12 @@ end
     end
 
     failed = collect(zip(errored...))
-    args = failed[1]
-    outs = failed[2]
-    errors = failed[3]
+    outs = failed[1]
+    args = failed[2]
+    rands = failed[3]
 
-    @test length(errors) >= 1
-    @test first(errors) isa AssertionError
+    @test length(outs) >= 1
+    @test first(outs) isa AssertionError
 end
 
 struct A

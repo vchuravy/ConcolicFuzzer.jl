@@ -34,6 +34,12 @@ function enter!(t::Trace, ctx, f, args...)
     return nothing
 end
 
+function unwind!(t::Trace, val)
+    t.current = pop!(t.stack)
+    t.current_depth -= 1
+    last(t.current).retval = val
+end
+
 # Records when we leave a function and the returnvalue
 function exit!(t::Trace, ctx, f, retval, args...)
     vretval = if Cassette.isboxed(ctx, retval)
@@ -41,9 +47,7 @@ function exit!(t::Trace, ctx, f, retval, args...)
     else
         retval
     end
-    t.current = pop!(t.stack)
-    t.current_depth -= 1
-    last(t.current).retval = vretval
+    unwind!(t, vretval)
     return nothing
 end
 

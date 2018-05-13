@@ -7,6 +7,8 @@ struct Sym
 end
 Cassette.metatype(::Type{<:TraceCtx}, ::DataType) = Sym
 
+Base.print(io, s::Sym) = print(io, s.name)
+
 ##
 # NOTE: For now do an explicit annotation of the leave nodes, once recursive trace generation work 
 #       one can use that for tainting
@@ -135,9 +137,9 @@ end
 Cassette.@primitive function rand(::Type{T}) where {T <: Integer, __CONTEXT__<:TraceCtx}
     resevoir = __trace__.metadata.rands
     if length(resevoir) >= 1
-        vv = convert(T, pop!(resevoir))
+        vv = pop!(resevoir)::T
     else 
-        vv = rand(Int64)
+        vv = rand(T)
     end
     sv = Sym(:rand, typeof(vv))
     return Cassette.Box(__trace__.context, vv, sv)

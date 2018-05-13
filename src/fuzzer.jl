@@ -47,15 +47,6 @@ function checkStream(stream)
     return sat, inputs
 end
 
-function execute(f, args...; rands = Any[])
-    try
-        val, _, trace = concolic_execution(f, args...; rands = rands)
-        return val, trace
-    catch err
-        return err
-    end
-end
-
 ###
 #    Iterative breath first tree search
 #      - Invalidated earliest branch and use Z3 to generate an example for the
@@ -73,15 +64,13 @@ function fuzz_wargs(f, initial_args...)
 
     while !isempty(worklist)
         depth, args, rands = pop!(worklist)
-        trace_or_err = execute(f, args...; rands = rands)
+        val, _, trace = concolic_execution(f, args...; rands = rands)
 
-        if !(trace_or_err isa Tuple)
-            push!(errored, (args, rands, trace_or_err))
-            continue
+        if val isa Exception
+            push!(errored, (val, args, rands))
+        else
+            push!(tested, (val, args, rands))
         end
-
-        val, trace = trace_or_err
-        push!(tested, (val, args, rands))
 
         stream = filter(trace)
         branches = Any[]

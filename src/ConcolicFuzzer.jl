@@ -32,7 +32,15 @@ function concolic_execution(f, args...; rands = Any[])
                          metadata = trace,
                          pass = InsertAssertsPass,
                          boxes=Val(true))
-    y = over_f(vals...)
+    y = nothing
+    try
+        y = over_f(vals...)
+    catch err
+        y = err
+        while trace.current_depth != 0
+            unwind!(trace, err)
+        end
+    end
     @assert isempty(trace.stack)
     verify(trace)
     if Cassette.isboxed(ctx, y)
