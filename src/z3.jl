@@ -54,6 +54,7 @@ toZ3(::typeof(Base.:<=)) = "<="
 toZ3(::typeof(Base.:>)) = ">"
 toZ3(::typeof(Base.:>=)) = ">="
 toZ3(::typeof(Base.:(==))) = "="
+toZ3(::typeof(Base.ifelse)) = "ite"
 
 validName(name) = "|$(name)|"
 declaration(s::Sym) = "(declare-const $(validName(s.name)) $(toZ3(s._type)))"
