@@ -41,8 +41,6 @@ end
 
 
 const FUNCTIONS_TO_IGNORE =(
-    Base.one,
-    Base.zero,
     assert,
     prove,
 )
