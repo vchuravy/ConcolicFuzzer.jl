@@ -46,6 +46,17 @@ end
         return y
     end
 
+    sat, inputs = check(f3, 1)
+    # Underflow possible at -9223372036854775808
+    @test sat == true
+
+    function f3(x)
+        assert(0<x<10)
+        y = x - 10
+        prove(y < 0)
+        return y
+    end
+
     # any input works as long as we don't need to hit any branches
     sat, inputs = check(f3, 1)
     @test sat == false

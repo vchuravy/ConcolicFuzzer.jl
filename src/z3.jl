@@ -39,22 +39,49 @@
 #     return s, m
 # end
 
-toZ3(::Type{Int64}) = "Int" # TODO use BitVectors
-toZ3(::Type{Bool}) = "Bool"
+nbits(::Type{Int128}) = 128
+nbits(::Type{Int64}) = 64
+nbits(::Type{Int32}) = 32
+nbits(::Type{Int16}) = 16
+nbits(::Type{Int8}) = 8
+nbits(::Type{UInt128}) = 128
+nbits(::Type{UInt64}) = 64
+nbits(::Type{UInt32}) = 32
+nbits(::Type{UInt16}) = 16
+nbits(::Type{UInt8}) = 8
 
-toZ3(x) = string(x)
+bitsToT(::Val{128}) = UInt128
+bitsToT(::Val{64}) = UInt64
+bitsToT(::Val{32}) = UInt32
+bitsToT(::Val{16}) = UInt16
+bitsToT(::Val{8}) = UInt8
+bitsToT(::Val{N}) where N = @error "Can construct type with $N bits"
 
-toZ3(f::Function) = @error "Can't handle $f yet"
-toZ3(::typeof(Base.:-)) = "-"
-toZ3(::typeof(Base.:+)) = "+"
-toZ3(::typeof(Base.:*)) = "*"
-toZ3(::typeof(Base.div)) = "div"
-toZ3(::typeof(Base.:<)) = "<"
-toZ3(::typeof(Base.:<=)) = "<="
-toZ3(::typeof(Base.:>)) = ">"
-toZ3(::typeof(Base.:>=)) = ">="
-toZ3(::typeof(Base.:(==))) = "="
-toZ3(::typeof(Base.ifelse)) = "ite"
+toZ3(::Type{T}) where T<:Integer = "(_ BitVec $(nbits(T)))"
+toZ3(::Type{Bool})    = "Bool"
+
+toZ3(x::Integer) = "(_ bv$x $(nbits(typeof(x))))"
+toZ3(x::Bool) = string(x)
+toZ3(x) = @error "toZ3 for $x is not a thing yet"
+
+FtoZ3(f::Function, ::Type{T}) where T = @error "Can't handle $f for $T yet"
+FtoZ3(::typeof(Base.:-), ::Type{<:Integer}) = "bvsub"
+FtoZ3(::typeof(Base.:+), ::Type{<:Integer}) = "bvadd"
+FtoZ3(::typeof(Base.:*), ::Type{<:Integer}) = "bvmul"
+FtoZ3(::typeof(Base.div), ::Type{<:Signed}) = "bvsdiv"
+FtoZ3(::typeof(Base.div), ::Type{<:Unsigned}) = "bvudiv"
+FtoZ3(::typeof(Base.:<), ::Type{<:Signed}) = "bvslt"
+FtoZ3(::typeof(Base.:<), ::Type{<:Unsigned}) = "bvult"
+FtoZ3(::typeof(Base.:<=), ::Type{<:Signed}) = "bvsle"
+FtoZ3(::typeof(Base.:<=), ::Type{<:Unsigned}) = "bvule"
+FtoZ3(::typeof(Base.:>), ::Type{<:Signed}) = "bvsgt"
+FtoZ3(::typeof(Base.:>), ::Type{<:Unsigned}) = "bvugt"
+FtoZ3(::typeof(Base.:>=), ::Type{<:Signed}) = "bvsge"
+FtoZ3(::typeof(Base.:>=), ::Type{<:Unsigned}) = "bvuge"
+#FtoZ3(::typeof(Base.:(==)), ::Type{<:Integer}) = "bveq"
+#FtoZ3(::typeof(Base.:(==)), ::Type{Bool}) = "="
+FtoZ3(::typeof(Base.:(==)), ::Type{<:Any}) = "="
+FtoZ3(::typeof(Base.ifelse), ::Type{<:Any}) = "ite"
 
 validName(name) = "|$(name)|"
 declaration(s::Sym) = "(declare-const $(validName(s.name)) $(toZ3(s._type)))"
@@ -64,6 +91,9 @@ function symbolic(t::Trace)
     @assert length(t.current) == 1
     return symbolic(filter(t))
 end
+
+Tunbox(x) = typeof(x)
+Tunbox(s::Sym) = s._type
 
 function symbolic(stream)
     declarations = IOBuffer()
@@ -98,7 +128,9 @@ function symbolic(stream)
             stmt = "(assert $stmt)"
         else
             @assert ret isa Sym
-            z3f = toZ3(f)
+            # HACK!
+            T = reduce(promote_type, map(Tunbox, args))
+            z3f = FtoZ3(f, T)
             z3ret = getZ3(ret)
             stmt = "(assert (= $z3ret ($z3f $z3args)))"
         end
@@ -130,7 +162,49 @@ function fromz3type(typ)
     elseif typ == "Bool"
         return Bool
     else
-        @error "What even is $typ"
+        r_typ = r"\(_ BitVec (\d{1,3})\)"
+        m = match(r_typ, typ)
+        if m === nothing
+            @error "What even is $typ"
+        else
+            return bitsToT(Val(parse(Int, m.captures[1])))
+        end
+    end
+end
+
+function fromz3val(T, val)
+    if T == Int
+        return parse(Int, val)
+    elseif T == Bool
+        return parse(Bool, val)
+    else
+        return parse(T, split(val)[2][3:end])
+    end
+end
+
+function stringToType(_type)
+    if _type == "Int128"
+        return Int128
+    elseif _type == "Int64"
+        return Int64
+    elseif _type == "Int32"
+        return Int32
+    elseif _type == "Int16"
+        return Int16
+    elseif _type == "Int8"
+        return Int8
+    elseif _type == "UInt128"
+        return UInt128
+    elseif _type == "UInt64"
+        return UInt64
+    elseif _type == "UInt32"
+        return UInt32
+    elseif _type == "UInt16"
+        return UInt16
+    elseif _type == "UInt8"
+        return UInt8
+    elseif _type == "Bool"
+        return Bool
     end
 end
 
@@ -140,14 +214,17 @@ function parseZ3(model)
     lines = split(chomp(model), '\n')[2:end-1]
     @assert length(lines) % 2 == 0
     inputs = Any[]
+
+    r_def = r"define-fun\s+(\|.*\|)\s+\(\)\s+(\(.+?\)|Bool|Int)\s+(\(.+?\)|\S+)"
     for i in 1:2:length(lines)
         def = strip(join(lines[i:i+1]))[2:end-1]
-        atoms = split(def)
-        @assert atoms[1] == "define-fun"
-        name = atoms[2]
-        @assert atoms[3] == "()"
-        T = fromz3type(atoms[4])
-        val = parse(T, atoms[5])
+        m = match(r_def, def)
+        if m === nothing
+            @error "Regex didn't match: $def"
+        end
+        name = m.captures[1]
+        T = fromz3type(m.captures[2])
+        val = fromz3val(T, m.captures[3])
         push!(inputs, (name, val))
     end
 
@@ -155,22 +232,36 @@ function parseZ3(model)
     rands = Any[]
     others = Any[]
 
-    r_arg = r"\|##arg_(\d+)#\d+\|"
-    r_rand = r"\|##rand#(\d+)\|"
+    r_arg = r"\|##arg_(\d+)#(\w+)#\d+\|"
+    r_rand = r"\|##rand#(\w+)#(\d+)\|"
+    r_others = r"\|##(\w+)#\d+\|"
     for (name, val) in inputs
         m = match(r_arg, name)
         if m !== nothing
-            id = parse(Int, first(m.captures))
+            id = parse(Int, m.captures[1])
+            T = stringToType(m.captures[2])
+            if T <: Integer
+                val = val % T
+            end
             push!(args, (id, val))
             continue
         end
         m = match(r_rand, name)
         if m !== nothing
-            id = parse(Int, first(m.captures))
+            id = parse(Int, m.captures[2])
+            T = stringToType(m.captures[1])
+            if T <: Integer
+                val = val % T
+            end
             push!(rands, (id, val))
             continue
         end
-        push!(others, (name, val))
+        m = match(r_others, name)
+        if m !== nothing
+            push!(others, (name, val))
+            continue
+        end
+        @error "Can't parse $name"
     end
     args = Tuple(map(x -> x[2], sort(args))) # sort by id
     rands = map(x -> x[2], sort(rands)) # sort by id

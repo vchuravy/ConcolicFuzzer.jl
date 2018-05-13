@@ -26,7 +26,7 @@ function concolic_execution(f, args...; rands = Any[])
     ctx = TraceCtx(f) 
     trace = Trace(rands)
     vals = map(enumerate(args)) do (i, arg)
-        Cassette.Box(ctx, arg, Sym(Base.gensym(Symbol(:arg_, i)), typeof(arg)))
+        Cassette.Box(ctx, arg, Sym(Symbol(:arg_, i), typeof(arg)))
     end
     over_f = Cassette.overdub(ctx, f,
                          metadata = trace,
