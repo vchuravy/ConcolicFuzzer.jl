@@ -33,8 +33,6 @@ function force_and_cut(stream, nth_branch)
     push!(cut_stream, (f, !ret, args))
 end
 
-generate(::Type{Int64}) = rand(Int)
-
 function checkStream(stream)
     z3model = symbolic(stream)
     sat, model = runZ3(z3model)
@@ -47,18 +45,53 @@ function checkStream(stream)
     return sat, inputs
 end
 
+
+import InteractiveUtils: subtypes
+
+function concretize(T::DataType)
+    ctypes = Any[]
+    types = Any[T]
+
+    while !isempty(types)
+        T = pop!(types)
+        if isconcretetype(T)
+            push!(ctypes, T)
+        else
+            append!(types, subtypes(T))
+        end
+    end
+    return ctypes
+end
+
+
+supported(T::DataType)= false
+generate(T::DataType) = error("Can't generate values of $T")
+
+const INTEGERS = Union{Bool, Int128, UInt128, Int64, UInt64, Int32, UInt32, Int16, UInt16, Int8, UInt8}
+supported(::Type{T}) where T<:INTEGERS = true
+generate(::Type{T}) where T<:INTEGERS = rand(T)
+
+function fuzz(f, argtypes...; maxdepth = typemax(Int64))
+    worklist = Any[]
+    args_ctypes = map(x->Base.filter(supported, concretize(x)), argtypes)
+    for types in Iterators.product(args_ctypes...)
+        initial_args = map(generate, types)
+        push!(worklist, (0, initial_args, Any[]))
+    end
+    fuzz_worklist(f, worklist, maxdepth)
+end
+
+function fuzz_wargs(f, initial_args...; maxdepth = typemax(Int64))
+    worklist = Any[(0, initial_args, Any[])]
+    fuzz_worklist(f, worklist, maxdepth)
+end
+
 ###
 #    Iterative breath first tree search
 #      - Invalidated earliest branch and use Z3 to generate an example for the
 #        opposite branch
 #      - explore all sides and iterate through the program to discover all branches
-function fuzz(f, argtypes...)
-    args = map(generate, argtypes)
-    fuzz_wargs(f, args...)
-end
-
-function fuzz_wargs(f, initial_args...)
-    worklist = Any[(0, initial_args, Any[])]
+function fuzz_worklist(f, worklist::Vector{Any}, maxdepth)
     tested = Any[] # did not error
     errored = Any[]
 
@@ -82,7 +115,16 @@ function fuzz_wargs(f, initial_args...)
         @info "Found $(length(branches)) new branches to explore"
 
         for (d, branch) in branches
-            sat, inputs = checkStream(branch)
+            if d >= maxdepth
+                @info "Terminated fuzzing that went to deep" maxdepth
+                continue
+            end
+            sat, inputs = try 
+                checkStream(branch)
+            catch ex
+                @error "Error in Z3 run, skipping" exception=ex branch 
+                continue
+            end
             if sat
                 args, rands, _ = inputs
                 push!(worklist, (d, args, rands))

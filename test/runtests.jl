@@ -142,6 +142,19 @@ end
     @test 40 in outs
 end
 
+@testset "Fuzzing over an abstract type" begin
+    function pure_madness(x::T) where T
+        if x < typemax(T)
+            return 42
+        end
+        return 9001
+    end
+
+    tested, errored = fuzz(pure_madness, Integer)
+
+    @test length(tested) == 21
+end
+
 @testset "Randomness" begin
     function r1()
         return rand(Int)

@@ -55,16 +55,16 @@ bitsToT(::Val{64}) = UInt64
 bitsToT(::Val{32}) = UInt32
 bitsToT(::Val{16}) = UInt16
 bitsToT(::Val{8}) = UInt8
-bitsToT(::Val{N}) where N = @error "Can construct type with $N bits"
+bitsToT(::Val{N}) where N = error("Can construct type with $N bits")
 
 toZ3(::Type{T}) where T<:Integer = "(_ BitVec $(nbits(T)))"
 toZ3(::Type{Bool})    = "Bool"
 
 toZ3(x::Integer) = "(_ bv$x $(nbits(typeof(x))))"
 toZ3(x::Bool) = string(x)
-toZ3(x) = @error "toZ3 for $x is not a thing yet"
+toZ3(x) = error("toZ3 for $x is not a thing yet")
 
-FtoZ3(f::Function, ::Type{T}) where T = @error "Can't handle $f for $T yet"
+FtoZ3(f::Function, ::Type{T}) where T = error("Can't handle $f for $T yet")
 FtoZ3(::typeof(Base.:-), ::Type{<:Integer}) = "bvsub"
 FtoZ3(::typeof(Base.:+), ::Type{<:Integer}) = "bvadd"
 FtoZ3(::typeof(Base.:*), ::Type{<:Integer}) = "bvmul"
@@ -175,7 +175,7 @@ function fromz3type(typ)
         r_typ = r"\(_ BitVec (\d{1,3})\)"
         m = match(r_typ, typ)
         if m === nothing
-            @error "What even is $typ"
+            error("What even is $typ")
         else
             return bitsToT(Val(parse(Int, m.captures[1])))
         end
@@ -230,7 +230,7 @@ function parseZ3(model)
         def = strip(join(lines[i:i+1]))[2:end-1]
         m = match(r_def, def)
         if m === nothing
-            @error "Regex didn't match: $def"
+            error("Regex didn't match: $def")
         end
         name = m.captures[1]
         T = fromz3type(m.captures[2])
@@ -275,7 +275,7 @@ function parseZ3(model)
             push!(others, (name, val))
             continue
         end
-        @error "Can't parse $name"
+        @error "Can't parse $name for $val"
     end
     args = Tuple(map(x -> x[2], sort(args))) # sort by id
     rands = map(x -> x[2], sort(rands)) # sort by id
