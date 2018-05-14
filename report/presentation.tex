@@ -1,0 +1,54 @@
+% Author: Valentin Churavy vchuravy@mit.edu
+\documentclass{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\RequirePackage[l2tabu, orthodox]{nag}
+
+\usepackage{graphicx}
+\usepackage{epstopdf}
+\usepackage{tabularx}
+\usepackage{epigraph}
+
+\usepackage{lmodern}
+\usepackage{enumerate}
+
+\usepackage{url}
+
+\usepackage{microtype}
+
+%% language (hyphenation, date format, ...)
+\usepackage[british]{babel}
+\usepackage[babel]{csquotes}
+
+%% math packages
+\usepackage{%
+  amsmath,      % AMS math package
+  amsfonts,     % AMS math fonts
+  amssymb       % AMS symbols
+}
+
+\usetheme[leftcorneredgy]{VCMIT}
+
+%%Bibliography
+\usepackage[backend=biber, style=authoryear]{biblatex}
+\bibliography{references.bib}
+
+%% Document Details
+\title{}
+\subtitle{}
+\author{Valentin Churavy}
+\institute[CSAIL]{JuliaLab@CSAIL}
+\date{16. May 2018}
+
+\begin{document}
+  \begin{frame}[plain]
+    \titlepage
+  \end{frame}
+  \begin{frame}{Table of Contents}
+    \tableofcontents[hideallsubsections]
+  \end{frame}
+\begin{frame}[allowframebreaks]{Bibliography}
+  \printbibliography
+\end{frame}
+\end{document}

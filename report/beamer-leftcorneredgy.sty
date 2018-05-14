@@ -1,0 +1,93 @@
+\renewcommand\beamerboxesrounded[2][]{%
+  \global\let\beamer@firstlineitemizeunskip=\relax%
+  \vbox\bgroup%
+  \setkeys{beamerboxes}{upper=block title,lower=block body,width=\textwidth,shadow=false}%
+  \setkeys{beamerboxes}{#1}%
+  {%
+    \usebeamercolor{\bmb@lower}%
+    \globalcolorstrue%
+    \colorlet{lower.bg}{bg}%
+  }%
+  {%
+    \usebeamercolor{\bmb@upper}%
+    \globalcolorstrue%
+    \colorlet{upper.bg}{bg}%
+  }%
+  %
+  % Typeset head
+  %
+  \vskip4bp
+  \setbox\bmb@box=\hbox{%
+    \begin{minipage}[b]{\bmb@width}%
+      \usebeamercolor[fg]{\bmb@upper}%
+      #2%
+    \end{minipage}}%
+  \ifdim\wd\bmb@box=0pt%
+    \setbox\bmb@box=\hbox{}%
+    \ht\bmb@box=1.5pt%
+    \bmb@prevheight=-4.5pt%
+  \else%
+    \wd\bmb@box=\bmb@width%
+    \bmb@temp=\dp\bmb@box%
+    \ifdim\bmb@temp<1.5pt%
+      \bmb@temp=1.5pt%
+    \fi%
+    \setbox\bmb@box=\hbox{\raise\bmb@temp\hbox{\box\bmb@box}}%
+    \dp\bmb@box=0pt%
+    \bmb@prevheight=\ht\bmb@box%
+  \fi%
+  \bmb@temp=\bmb@width%
+  \bmb@dima=\bmb@temp\advance\bmb@dima by2.2bp%
+  \bmb@dimb=\bmb@temp\advance\bmb@dimb by4bp%
+  \hbox{%
+    \begin{pgfpicture}{0bp}{+-\ht\bmb@box}{0bp}{+-\ht\bmb@box}
+      \ifdim\wd\bmb@box=0pt%
+        \color{lower.bg}%
+      \else%
+        \color{upper.bg}%
+      \fi%
+      %Define where the left corner is
+      \pgfpathqmoveto{-4bp}{3bp}
+      %End left corner
+      \pgfpathlineto{\pgfpoint{\bmb@temp}{3bp}}
+      \pgfpathcurveto%
+      {\pgfpoint{\bmb@dima}{3bp}}%
+      {\pgfpoint{\bmb@dimb}{1.2bp}}%
+      {\pgfpoint{\bmb@dimb}{-1bp}}%
+      \bmb@dima=-\ht\bmb@box%
+      \advance\bmb@dima by-2pt%
+      \pgfpathlineto{\pgfpoint{\bmb@dimb}{\bmb@dima}}
+      \pgfpathlineto{\pgfpoint{-4bp}{\bmb@dima}}
+      \pgfusepath{fill}
+    \end{pgfpicture}%
+    \copy\bmb@box%
+  }%
+  \nointerlineskip%
+  \vskip-1pt%
+  \ifdim\wd\bmb@box=0pt%
+  \else%
+  \hbox{%
+    \begin{pgfpicture}{0pt}{0pt}{\bmb@width}{6pt}
+      \bmb@dima=\bmb@width%
+      \advance\bmb@dima by8bp%
+      \pgfpathrectangle{\pgfpoint{-4bp}{-1bp}}{\pgfpoint{\bmb@dima}{8bp}}
+      \pgfusepath{clip}
+      {\pgftransformshift{\pgfpoint{-4bp}{0bp}}\pgftext[left,base]{\pgfuseshading{bmb@transition}}}%
+    \end{pgfpicture}%
+  }%
+  \nointerlineskip%
+  \vskip-0.5pt%
+  \fi%
+  \ifbmb@shadow%
+    \setbox\bmb@boxshadow=\hbox{\pgfuseshading{bmb@shadow}}%
+    \setbox\bmb@boxshadowball=\hbox{\pgfuseshading{bmb@shadowball}}%
+    \setbox\bmb@boxshadowballlarge=\hbox{\pgfuseshading{bmb@shadowballlarge}}%
+  \fi%
+  \setbox\bmb@colorbox=\hbox{{\pgfpicturetrue\pgfsetcolor{lower.bg}}}%
+  \setbox\bmb@box=\hbox\bgroup\begin{minipage}[b]{\bmb@width}%
+    \vskip2pt%
+    \usebeamercolor[fg]{\bmb@lower}%
+    \colorlet{beamerstructure}{upper.bg}%
+    \colorlet{structure}{upper.bg}%
+    %\color{.}%
+  }

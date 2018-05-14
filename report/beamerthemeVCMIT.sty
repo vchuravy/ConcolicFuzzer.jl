@@ -1,0 +1,167 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Based  on University of Osnabrueck theme for LaTeX beamerclass     %
+%                                                                     %
+% Authors:                                                            %
+%    Martin Günther <mguenthe@uos.de>                                 %
+%    Jochen Sprickerhof <jochen@sprickerhof.de>                       %
+%    Valentin  Churavy   <vchuravy@uos.de>                            %
+%    Valentin  Churavy   <vchuravy@mit.edu>                           %
+%                                                                     %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{beamerthemeVCMIT}[2018/05/14]
+\RequirePackage{mitcolors}
+\RequirePackage{graphics}
+
+\mode<presentation>
+
+% TODO: class option ``nototalframenumbers'' (doesn't show total frame numbers from footline)
+
+
+
+%======================================================================
+%	colors
+%======================================================================
+\newif\ifshadowline
+\shadowlinefalse
+\DeclareOptionBeamer{leftcorneredgy}{\input{beamer-leftcorneredgy.sty}}
+\DeclareOptionBeamer{shadowline}{\csname shadowline#1\endcsname}
+\ProcessOptionsBeamer
+
+\useoutertheme{infolines}
+
+%% primary theme color
+\setbeamercolor{structure}{fg=mitred,bg=white}
+\setbeamercolor{structure-inverted}{fg=white,bg=mitred}
+
+\setbeamercolor{palette primary}{bg=mitred,fg=white}
+\setbeamercolor{palette secondary}{fg=white,bg=mitgray}
+\setbeamercolor{palette tertiary}{fg=white,bg=darkgray}
+\setbeamercolor{palette quaternary}{fg=white,bg=mitgray}
+
+\setbeamercolor{frametitle}{bg=mitred,fg=white}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\setbeamercolor{title}{parent=structure-inverted}
+% \setbeamercolor{titlelike}{parent=structure-inverted}
+
+\setbeamercolor{section in toc}{fg=black,bg=white}
+\setbeamercolor{subsection in toc}{parent=section in toc}
+
+\setbeamercolor{block title}{parent=structure-inverted}
+\setbeamercolor{block title example}{fg=black,bg=black!50!white}
+%\setbeamercolor{block title alerted}{parent=uos-second-color-inverted}
+
+\setbeamercolor{block body}{parent=normal text,use=block title,bg=block title.bg!15!bg}
+\setbeamercolor{block body example}{parent=normal text,use=block title example,bg=block title example.bg!50!bg}
+\setbeamercolor{block body alerted}{parent=normal text,use=block title alerted,bg=block title alerted.bg!25!bg}
+
+% colors of itemize/enumerate in example block: fg same as bg of block title example
+\setbeamercolor*{example text}{fg=black!50!white}
+% colors of itemize/enumerate in alert block: fg same as bg of block title alerted
+\setbeamercolor*{alerted text}{fg=green!80!yellow}
+
+\setbeamercolor{logo in head/foot}{parent=structure-inverted}
+\setbeamercolor{frame numbers in head/foot}{parent=logo in head/foot}
+
+\setbeamercolor{section in head/foot}{parent=structure-inverted}
+\setbeamercolor{subsection in head/foot}{parent=palette quaternary}
+
+\setbeamercolor{author in head/foot}{parent=palette primary}
+\setbeamercolor{title in head/foot}{parent=palette quaternary}
+
+
+
+%======================================================================
+%	headline + footline
+%======================================================================
+
+\pgfdeclareverticalshading{beamer@belowframetitle}{\the\paperwidth}{%
+      color(0ex)=(white);%
+      color(1ex)=(black!25!white)
+    }
+
+\setbeamertemplate{frametitle}
+{%
+  \nointerlineskip%
+  \begin{beamercolorbox}[wd=\paperwidth,leftskip=.3cm,rightskip=.3cm,vmode,right]{title in head/foot}
+	\vskip.5ex
+    \usebeamerfont*{frametitle}\usebeamercolor[fg]{palette primary}\insertframetitle\hspace*{1ex}%
+      \ifx\insertframesubtitle\@empty%
+        \strut\par%
+      \else
+        \par{\usebeamerfont*{framesubtitle}{\usebeamercolor[fg]{palette quaternary}\insertframesubtitle}\strut\hspace*{1.5ex}\par}%
+      \fi%%
+    \usebeamerfont{headline}%
+    \vskip.5ex
+  \end{beamercolorbox}%
+  \nointerlineskip
+  \begin{beamercolorbox}[wd=\paperwidth,ht=.5ex,dp=0ex]{empty}
+    \pgfuseshading{beamer@belowframetitle}%
+  \end{beamercolorbox}%
+}
+
+\setbeamertemplate{footline}
+{%
+  \leavevmode%
+  \hbox{\begin{beamercolorbox}[wd=.3\paperwidth,ht=2.5ex,dp=1.125ex,leftskip=.3cm plus1fill,rightskip=.3cm]{author in head/foot}%
+    \usebeamerfont{author in head/foot}\insertshortauthor
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.5\paperwidth,ht=2.5ex,dp=1.125ex,leftskip=.3cm,rightskip=.3cm]{title in head/foot}%
+    \usebeamerfont{title in head/foot}\insertshorttitle
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.2\paperwidth,ht=2.5ex,dp=1.125ex,leftskip=.3cm,rightskip=.3cm plus1fil]{frame numbers in head/foot}%
+    \hfill\usebeamerfont{title in head/foot}\insertframenumber{}\,/\,\inserttotalframenumber\hspace*{2ex}
+  \end{beamercolorbox}}%
+  \vskip0pt%
+}
+
+%======================================================================
+%	miscellaneous settings
+%======================================================================
+%% use squares for itemize + enumerate
+\useinnertheme{rectangles}
+
+%% make title frame rounded + shadowed
+ \setbeamertemplate{title page}[default][rounded=true]
+
+%% make blocks rounded + shadowed
+% \setbeamertemplate{blocks}[rounded][shadowed]
+\setbeamertemplate{blocks}[rounded]
+%% print small fonts (e.g., in head- and footline) in boldface
+\usefonttheme[onlysmall]{structurebold}
+
+%% print block titles in normal size (instead of bigger)
+\setbeamerfont{block title}{size={}}
+
+%% remove the navigation symbols
+\beamertemplatenavigationsymbolsempty
+
+%% logo on title page
+\titlegraphic{
+    \includegraphics[width=0.3\textwidth]{julia-logo}
+}
+
+\mode
+<all>
+
+\ifshadowline
+
+\AtBeginDocument{
+  \pgfdeclareverticalshading{beamer@topshade}{\paperwidth}{%
+    color(0pt)=(bg);
+    color(4pt)=(black!50!bg)}
+}
+
+\addtobeamertemplate{headline}
+{}
+{%
+  \vskip-0.2pt
+  \pgfuseshading{beamer@topshade}
+  \vskip-2pt
+}
+
+\fi
