@@ -74,6 +74,33 @@ const INTEGERS = Union{Bool, Int128, UInt128, Int64, UInt64, Int32, UInt32, Int1
 supported(::Type{T}) where T<:INTEGERS = true
 generate(::Type{T}) where T<:INTEGERS = rand(T)
 
+# UGLY HACK
+function enumerateSupportedTypes(i)
+    if i == 0
+      return Int64
+    elseif i == 1
+      return UInt64
+    elseif i == 2
+      return Int128
+    elseif i == 3 
+      return UInt128
+    elseif i == 4 
+      return Int32
+    elseif i == 5 
+      return UInt32
+    elseif i == 6
+      return Int16
+    elseif i == 7
+      return UInt16
+    elseif i == 8 
+      return Int8
+    elseif i == 9
+      return UInt8
+    else
+      return Bool
+    end
+end
+
 function fuzz(f, argtypes...; maxdepth = typemax(Int64))
     worklist = Any[]
     args_ctypes = map(x->Base.filter(supported, concretize(x)), argtypes)

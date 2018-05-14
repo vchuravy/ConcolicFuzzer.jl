@@ -337,6 +337,31 @@ end
     # @test_broken symb == true
 end
 
+@testset "Fuzz supported datatypes" begin
+   function over_dt(::Type{T}) where T
+      if T == Int64
+        return true
+      else
+        return false
+      end
+    end
+
+    tested, errored = fuzz((x)->over_dt(ConcolicFuzzer.enumerateSupportedTypes(x)), Int)
+    @test length(tested) == 11
+
+    function over_dt2(::Type{Int8})
+        return false
+    end
+
+    function over_dt2(::Type{Int64})
+        return true
+    end
+
+    tested, errored = fuzz((x)->over_dt2(ConcolicFuzzer.enumerateSupportedTypes(x)), Int)
+    @test length(tested) == 2
+    @test length(errored) == 9
+end
+
 # @testset "Complicated Fuzzing" begin
 #     function mysum(A, N)
 #         acc = 0
