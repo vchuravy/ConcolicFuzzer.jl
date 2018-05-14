@@ -153,6 +153,9 @@ end
     tested, errored = fuzz(pure_madness, Integer)
 
     @test length(tested) == 21
+
+    tested, errored = fuzz(pure_madness, Union{Int32, UInt64})
+    @test length(tested) == 4
 end
 
 @testset "Randomness" begin

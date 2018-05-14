@@ -48,7 +48,7 @@ end
 
 import InteractiveUtils: subtypes
 
-function concretize(T::DataType)
+function concretize(T::Union{DataType, Union})
     ctypes = Any[]
     types = Any[T]
 
@@ -56,6 +56,9 @@ function concretize(T::DataType)
         T = pop!(types)
         if isconcretetype(T)
             push!(ctypes, T)
+        elseif T isa Union
+            push!(types, T.a)
+            push!(types, T.b)
         else
             append!(types, subtypes(T))
         end
@@ -119,10 +122,10 @@ function fuzz_worklist(f, worklist::Vector{Any}, maxdepth)
                 @info "Terminated fuzzing that went to deep" maxdepth
                 continue
             end
-            sat, inputs = try 
+            sat, inputs = try
                 checkStream(branch)
             catch ex
-                @error "Error in Z3 run, skipping" exception=ex branch 
+                @error "Error in Z3 run, skipping" exception=ex branch
                 continue
             end
             if sat
