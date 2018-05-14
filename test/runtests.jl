@@ -58,6 +58,7 @@ end
     end
 
     # any input works as long as we don't need to hit any branches
+    # if you have branches use `fuzz_and_check`
     sat, inputs = check(f4, 1)
     @test sat == false
 end
@@ -360,6 +361,20 @@ end
     tested, errored = fuzz((x)->over_dt2(ConcolicFuzzer.enumerateSupportedTypes(x)), Int)
     @test length(tested) == 2
     @test length(errored) == 9
+end
+
+@testset "Fuzz and Check" begin
+    function fc(y)
+        @assert(0 < y)
+        if y < 10
+            x = y - 5
+        else
+            x = y - 7
+        end
+        ConcolicFuzzer.prove(x < y)
+    end
+    result = ConcolicFuzzer.fuzz_and_check(fc, Int)
+    @test any(map(r->r[1], result)) == false
 end
 
 # @testset "Complicated Fuzzing" begin

@@ -1,6 +1,6 @@
 module ConcolicFuzzer
 
-export concolic_execution, check, fuzz, fuzz_wargs
+export concolic_execution, check, fuzz, fuzz_wargs, fuzz_and_check
 
 # Cassette is a non-standard execution engine for Julia
 # It allows for contextualised execution. I use Cassette to generate
@@ -61,10 +61,35 @@ include("fuzzer.jl")
 Given a `f` that uses manually inserted `assert` and `prove` statements.
 Check if the symbolic part of the trace is satisfiable or not.
 """
-function check(f, args...)
-    _, _, trace = concolic_execution(f, args...)
+function check(f, args...; rands = Any[])
+    _, _, trace = concolic_execution(f, args...; rands = rands)
     stream = filter(trace)
     return checkStream(stream)
 end
 
+"""
+    fuzz_and_check(f, argtypes...)
+
+Ussing a user provided `prove` stament, proves that
+the condition holds across all reachable branches.
+
+Returns a list of `(sat, args)` where sat indicates
+the trace was satisfiable and under which arguments.
+To prove a statement you want to have branches be
+unsatisfiable.
+
+NOTE:
+  - Do not use manually inserted `assert` statements, since
+    that will throw `fuzz` off the trail. You can use `@assert`
+    to the same effect.
+"""
+function fuzz_and_check(f, argtypes...)
+    tested, errored = fuzz(f, argtypes...)
+    ntested = Any[]
+    for (out, args, rands) in tested
+        result = check(f, args...; rands=rands)
+        push!(ntested, result)
+    end
+    return ntested
+end
 end # module
