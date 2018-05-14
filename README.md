@@ -33,3 +33,7 @@ no gurantees what so ever are given.
    This requires recursive trace generation.
 * Currently doesn't handle floats.
 * No memory-model/No support for Arrays.
+* `Bool` in Julia is a subtype of `Integer`, therefore arithmetic and comparision operations are
+  defined. It is not clear to me how to translate that into SMT2. One possibility is translate
+  all `Bool` to `(_ BitVec 1)`, but than we can no longer use them as output for comparision
+  operations. This will require reasoning over Julia's type system in the solver...
