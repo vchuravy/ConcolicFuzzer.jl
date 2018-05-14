@@ -155,14 +155,20 @@ function runZ3(model)
     @debug begin
         z3input = read(input, String)
         seekstart(input)
-        "Z3 input" model=z3input
+        """
+        Z3 input:
+        $z3input
+        """
     end
     write(tinput, input)
     close(tinput)
     close(output.in)
     sat = readline(output)
     model = read(output, String)
-    @debug "Z3 output" sat model
+    @debug """Z3 output
+    $sat
+    $model
+    """
     return (sat == "sat", model)
 end
 
