@@ -7,7 +7,7 @@ struct Sym
 end
 Cassette.metatype(::Type{<:TraceCtx}, ::DataType) = Sym
 
-Base.print(io, s::Sym) = print(io, s.name)
+# Base.print(io, s::Sym) = print(io, s.name)
 
 ##
 # NOTE: For now do an explicit annotation of the leave nodes, once recursive trace generation work 

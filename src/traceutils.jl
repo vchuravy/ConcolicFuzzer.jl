@@ -32,6 +32,15 @@ function filter(t::Trace)
     stream = Tuple{Any, Any, Tuple}[]
     recurse(t) do call
         if isempty(call.children) && any(a->isa(a,Sym), call.args)
+            if call.retval in call.args
+                if call.f !== Base.convert
+                    @warn """
+                    Found method that assigns to an input argument
+                    Skipping ($(call.f), $(call.retval), $(call.args))
+                    """
+                end
+                return
+            end
             push!(stream, (call.f, call.retval, call.args))
         end
         return
