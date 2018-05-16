@@ -31,12 +31,12 @@
 \usetheme[leftcorneredgy]{VCMIT}
 
 %%Bibliography
-\usepackage[backend=biber, style=authoryear]{biblatex}
+\usepackage[backend=biber, style=numeric]{biblatex}
 \bibliography{references.bib}
 
 %% Document Details
-\title{}
-\subtitle{}
+\title{Concolic Execution for Fuzzing in Julia}
+\subtitle{Final project for 6.858 (Spring 2018)}
 \author{Valentin Churavy}
 \institute[CSAIL]{JuliaLab@CSAIL}
 \date{16. May 2018}
@@ -48,7 +48,129 @@
   \begin{frame}{Table of Contents}
     \tableofcontents[hideallsubsections]
   \end{frame}
-\begin{frame}[allowframebreaks]{Bibliography}
-  \printbibliography
+  \section{Concolic Execution}
+  \begin{frame}{Concolic Execution}
+      \begin{block}{Welcome to Lab 3}
+          \pause
+          ... but in Julia!
+      \end{block}
+\pause
+      \begin{block}{General strategy}
+          \begin{itemize}[<+->]
+          \item Generate symbolic trace of the program for a given input
+          \item Feed symbolic trace to Z3 to generate inputs that cause exploration of unvisited branches
+          \item Iterate until all branches are visited, record which branches throw exceptions
+      \end{itemize}
+          Based on \cite{Godefroid2005-ld, Cadar2006-hs}
+      \end{block}
+  \end{frame}
+  \section{Julia in brief}
+  \begin{frame}{Julia in brief}
+      \begin{block}{}
+          Julia \cite{Bezanson2012-iw} is a dynamic high-performance language, it looks like Python, runs like Fortran,
+      and talks like Lisp. It has interesting language design properties, like a rich type
+          system, multiple dispatch, macros, and staged programming. It uses a compiler based on LLVM\cite{Lattner2004-dv}.
+      \end{block}
+
+      \pause
+      \begin{exampleblock}{This is not a Julia tutorial!}
+          I am going to talk about a couple of advanced concepts and use a
+          development version of Jula with experimental tooling!
+
+          If you want to learn more about Julia, ask me later!
+      \end{exampleblock}
+
+      \pause
+      \begin{block}{AD in 5s}
+          Example time!
+      \end{block}
+  \end{frame}
+  \section{Implementation}
+  \begin{frame}{Implementation}
+      \begin{itemize}[<+->]
+        \item Goal: Be able to deal with arbitrary user code
+        \item Trace an invocation of a function, e.g. record recursivly,
+              which calls occur and which input + output arguments they have.
+        \item Mark/Taint input arguments as symbolic
+        \item Issue: The trace is linearized and no longer contains control-flow
+        \item Solution: Rewrite and rejit user-provided functions and instert calls
+              to the assert function, which records conditionals that are used as part
+              of the control-flow.
+        \item Filter concolic trace to get a trace that only depends on the tainted arguments
+        \item Cut trace at branch and negate branch condition
+        \item Translate symbolic trace to SMT2/Z3, if satisfiable use the input value to continue exploration
+    \end{itemize}
+  \end{frame}
+  \begin{frame}{Solving the type-constraint problem with Cassette}
+      One of the challenges was to be able to taint arbitrary user-code, including user code that has type-constraints. \pause
+      \begin{exampleblock}{Cassette}
+          \begin{itemize}[<+->]
+            \item Cassette.jl \cite{Revels_undated-st} developed here at MIT provides a framework to extend Julia with non-standard execution models, like AD or symbolic execution, through contextual dispatch
+            \item User-code is executed within a \emph{context} in which the context author can provide alternative \emph{primitives} and can dynamically inject passes into the compiler
+            \item Usage for this project
+                \begin{itemize}[<+->]
+                \item Trace generation through pre-/post-hooks on every function call
+                \item Rewrite IR to inject assert statements
+                \item Taint propagation through the metadata system of Cassette
+                \item Context specific primitives of operations (like addition) to propagate taint or to create tain (rand)
+            \end{itemize}
+        \end{itemize}
+      \end{exampleblock}
+  \end{frame}
+  \begin{frame}
+      \begin{block}{Extensible design: rand}
+          One problem in concolic execution is how to deal with random variables, concolic execution depends on being able to \emph{deterministically} execute programs.
+          \emph{rand} is implemented as a primitive that generates taint and the return value of a seen execution of \emph{rand} can be controlled and during fuzzing
+          Z3 will generate values for \emph{rand} much in the same way it does for other inputs.
+
+          This could be extended to other foreign-calls like reading from the filesystem.
+      \end{block}
+  \end{frame}
+  \section{Examples}
+  \begin{frame}{Examples}
+    \begin{itemize}
+        \item Proof some properties
+        \item Fuzzing!
+        \item Loops, structs, random variables
+     \end{itemize}
+  \end{frame}
+  \section{Limitations}
+  \begin{frame}{Future-work: Features}
+      \begin{itemize}[<+->]
+          \item Reasoning about the type-domain
+          \item Taint analysis through Arrays
+          \item Taint analysis with non-integer inputs
+            \begin{itemize}
+                \item Strings
+                \item Structs
+                \item Floating-point values
+            \end{itemize}
+        \item Arithmetic on Bool
+      \end{itemize}
+  \end{frame}
+  \begin{frame}{Future-work: Tooling}
+      \begin{itemize}[<+->]
+          \item Using the Klee query language
+          \item Maybe deeper integration with Klee\cite{Cadar_Dunbar_Engler}
+          \item Only intercept intrinsics and built-ins instead of higher
+                level methods
+          \item Better analysis of function to taint usage of global
+                variables and foreigncalls
+      \end{itemize}
+  \end{frame}
+  \begin{frame}
+      \begin{block}{Where to find this work}
+          \url{https://github.com/vchuravy/ConcolicFuzzer.jl}
+      \end{block}
+      \pause
+      \begin{block}{If you want to learn more about Julia!}
+          \begin{enumerate}
+              \item Write me an e-mail or go to \url{https://julialang.org}
+              \item Find me in 32-G785
+            \end{enumerate}
+      \end{block}
+  \end{frame}
+  \begin{frame}[allowframebreaks]{Bibliography}
+      \printbibliography
 \end{frame}
 \end{document}
