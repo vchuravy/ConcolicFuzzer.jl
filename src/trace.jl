@@ -1,81 +1,74 @@
+
+# A symbol is a name and the concolicly computed type
+struct Sym
+    name::Symbol
+    _type::DataType
+    Sym(base, _type::DataType) = new(Base.gensym(Symbol(base, '#', _type)), _type)
+    Sym(_type::DataType) = new(Base.gensym(Symbol(_type)), _type)
+end
+Cassette.metadatatype(::Type{<:TraceCtx}, ::DataType) = Sym
+
+record(args, ctx) = map(args) do arg
+    if istagged(arg, ctx)
+        metadata(arg, ctx)
+    else
+        arg
+    end
+end
+
 # A callsite is a function with a concolic argument set
 # children are all the callsites within the function
 mutable struct Callsite
     f::Any
     args::Any
-    retval::Any
-    depth::Int
+    retval::Union{Some{Any}, Nothing}
     children::Vector{Callsite}
+    Callsite(f, args) = new(f, args, nothing, Callsite[])
 end
+Base.push!(trace::Callsite, call::Callsite) = push!(trace.children, call)
 
-mutable struct Trace
-    current::Vector{Callsite}
-    stack::Vector{Vector{Callsite}}
-    rands::Vector{Any}
-    current_depth::Int
-    Trace() = new(Callsite[], Callsite[], Any[], 0)
-    Trace(rands) = new(Callsite[], Callsite[], rands, 0)
-end
-
-# Records when we enter a function and the arguments
-function enter!(t::Trace, ctx, f, args...)
-    vargs = map(args) do x 
-        if Cassette.isboxed(ctx, x)
-            return Cassette.meta(ctx, x)
-        else
-            return x
-        end
+##
+# We need to manually override for IntrinsicFunctions (which are the leaf-nodes we are interested in)
+# Since in tagged contexts there is an automatic fallback available.
+##
+function Cassette.execute(ctx::TraceCtx{Callsite, <:Cassette.Tag}, f::Core.IntrinsicFunction, args...)
+    call = Callsite(f, record(args, ctx))
+    push!(ctx.metadata, call)
+    retval = fallback(ctx, f, args...)
+    if any(a -> istagged(a, ctx), args)
+        retval = tag(retval, ctx, Sym(typeof(retval)))
     end
-    t.current_depth += 1
-    callsite = Callsite(f, vargs, nothing, t.current_depth, Callsite[])
-    push!(t.current, callsite)
-    push!(t.stack, t.current)
-    t.current = callsite.children
-    return nothing
+    call.retval = Some(istagged(retval, ctx) ? metadata(retval, ctx) : ctx)
+    return retval
 end
 
-function unwind!(t::Trace, val)
-    t.current = pop!(t.stack)
-    t.current_depth -= 1
-    last(t.current).retval = val
-end
+##
+# Recursivly trace though our program. 
+#
+# Note: This won't trace functions that are defined primitive and there are several
+#       fallbacks that Cassette provides for tagged contexts.
+#
+# Question: Shouldn't canoverdub for primitives be false?
+##
+function Cassette.execute(ctx::TraceCtx, f, args...)
+    # We need to push the callsite first into metadata
+    # otherwise we run into issues with functions that throw errors
+    call = Callsite(f, record(args, ctx))
+    push!(ctx.metadata, call)
 
-# Records when we leave a function and the returnvalue
-function exit!(t::Trace, ctx, f, retval, args...)
-    vretval = if Cassette.isboxed(ctx, retval)
-        Cassette.meta(ctx, retval)
+    # Recurse into the next function 
+    retval = if canoverdub(ctx, f, args...)
+        newctx = similarcontext(ctx, metadata = call)
+        Cassette.overdub(newctx, f, args...)
     else
+        retval = fallback(ctx, f, args...)
+        # If any of our inputs was tagged we want to tag the return value so that
+        # the symbolic nature of this operation is captured.
+        if any(a -> istagged(a, ctx), args) && !istagged(retval, ctx)
+            retval = tag(retval, ctx, Sym(typeof(retval)))
+        end
         retval
     end
-    unwind!(t, vretval)
-    return nothing
+    call.retval = Some(istagged(retval, ctx) ? metadata(retval, ctx) : ctx)
+    return retval
 end
-
-Cassette.@prehook function (f::Any)(args...) where {__CONTEXT__<:TraceCtx}
-    enter!(__trace__.metadata, __trace__.context, f, args...)
-end
-
-Cassette.@posthook function (f::Any)(args...) where {__CONTEXT__<:TraceCtx}
-    exit!(__trace__.metadata, __trace__.context, f, args...)
-end
-
-###
-# NOTE: Ideally we would use a recursive trace generation,
-#       since that would also allow us to do the tainting
-#       for arbitrary functions
-# 
-#  Cassette.@primitive function (f::Any)(args...) where {__CONTEXT__<:TraceCtx}
-#     if Cassette.is_core_primitive(__trace__, f, args...)
-#         return f(args...)
-#     else
-#         subtrace = Any[]
-#         push!(__trace__.metadata, f => subtrace)
-#         new_f = Cassette.overdub(__trace__.context, f;
-#                                  phase = Cassette.Transform(),
-#                                  metadata = subtrace)
-#         return new_f(args...)
-#     end
-# end
-# 
-# trace = Any[]
-# Cassette.overdub(TraceCtx, sum; metadata = trace)(rand(3))

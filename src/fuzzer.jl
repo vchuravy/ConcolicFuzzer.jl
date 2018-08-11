@@ -1,5 +1,5 @@
 
-nbranch(t::Trace) = nbranch(flatten(t))
+nbranch(t::Callsite) = nbranch(flatten(t))
 function nbranch(stream)
     count = 0
     for (f, _, _) in stream
@@ -29,8 +29,8 @@ function force_and_cut(stream, nth_branch)
     cut_stream = cut_at_nth_branch(stream, nth_branch)
     f, ret, args = pop!(cut_stream)
     @assert f == assert
-    @assert ret isa Bool
-    push!(cut_stream, (f, !ret, args))
+    @assert anything(ret) isa Bool
+    push!(cut_stream, (f, Some(!anything(ret)), args))
 end
 
 function checkStream(stream)
@@ -127,7 +127,7 @@ function fuzz_worklist(f, worklist::Vector{Any}, maxdepth)
 
     while !isempty(worklist)
         depth, args, rands = pop!(worklist)
-        val, _, trace = concolic_execution(f, args...; rands = rands)
+        val, _, trace = execute(f, args...; rands = rands)
 
         if val isa Exception
             push!(errored, (val, args, rands))

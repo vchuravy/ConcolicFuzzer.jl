@@ -1,54 +1,61 @@
 module ConcolicFuzzer
 
-export concolic_execution, check, fuzz, fuzz_wargs, fuzz_and_check
+export execute, check, fuzz, fuzz_wargs, fuzz_and_check
 
 # Cassette is a non-standard execution engine for Julia
 # It allows for contextualised execution. I use Cassette to generate
 # concolic traces of arbitrary Julia programs. Each execution creates
 # a particular trace depending on the concrete input arguments.
-import Cassette
+using Cassette
+using Cassette: Tagged, tag, untag, istagged, metadata, hasmetadata,
+                enabletagging, overdub, canoverdub, similarcontext, fallback
+
 Cassette.@context TraceCtx
 
-include("trace.jl")
+anything(x) = x
+anything(x::Some) = something(x)
+
 include("taint.jl")
+include("trace.jl")
 include("asserts.jl")
 include("traceutils.jl")
 
 """
-    concolic_execution(f, x)
+    execute(f, x)
 
 Executes the function `f` concolicly by tainting the argument `x`.
 Returns a tuple with the first element being the concrete value,
 the second element a boolean that indicates whether the output is dependend on the input
 and the third element is a concolic Trace.
 """
-function concolic_execution(f, args...; rands = Any[])
-    ctx = TraceCtx(f) 
-    trace = Trace(rands)
-    vals = map(enumerate(args)) do (i, arg)
-        Cassette.Box(ctx, arg, Sym(Symbol(:arg_, i), typeof(arg)))
+function execute(f, args...; rands = Any[])
+    trace = Callsite[]
+    ctx = enabletagging(TraceCtx(metadata = trace, pass = InsertAssertsPass), f)
+    tagged_args = map(enumerate(args)) do (i, arg)
+        sym = Sym(Symbol(:arg_, i), typeof(arg))
+        tag(arg, ctx, sym)
     end
-    over_f = Cassette.overdub(ctx, f,
-                         metadata = trace,
-                         pass = InsertAssertsPass,
-                         boxes=Val(true))
-    y = nothing
-    try
-        y = over_f(vals...)
+    y = try
+        Cassette.@overdub(ctx, f(tagged_args...))
     catch err
-        y = err
-        while trace.current_depth != 0
-            unwind!(trace, err)
-        end
+        err
     end
-    @assert isempty(trace.stack)
+
+    # Unpack the trace
+    @assert length(trace) == 1
+    trace = trace[1]
+    @assert trace.f === Core._apply
+    @assert length(trace.children) == 1
+    trace = first(trace.children) 
     verify(trace)
-    if Cassette.isboxed(ctx, y)
-        vy = Cassette.unbox(ctx, y)
+
+    if istagged(y, ctx)
+        vy = untag(y, ctx)
     else
         vy = y
     end
-    symb = Cassette.isboxed(ctx, y) && Cassette.meta(ctx, y) != Cassette.unused
+
+    symb = istagged(y, ctx) && hasmetadata(y, ctx)
     return (vy, symb, trace)
 end
 
@@ -62,7 +69,7 @@ Given a `f` that uses manually inserted `assert` and `prove` statements.
 Check if the symbolic part of the trace is satisfiable or not.
 """
 function check(f, args...; rands = Any[])
-    _, _, trace = concolic_execution(f, args...; rands = rands)
+    _, _, trace = execute(f, args...; rands = rands)
     stream = filter(trace)
     return checkStream(stream)
 end

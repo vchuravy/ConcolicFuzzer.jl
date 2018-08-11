@@ -7,11 +7,6 @@ Returns `x`
 
 """
 assert(x::Bool) = x 
-Cassette.@primitive function assert(x::@Box) where {__CONTEXT__<:TraceCtx}
-    ctx = __trace__.context
-    return Cassette.unbox(ctx, x)
-end
-
 
 """
     prove(x::Bool)
@@ -39,25 +34,25 @@ the post-condition given by `prove` holds.
 For more information see `check`.
 """
 prove(x::Bool) = x
-Cassette.@primitive function prove(x::@Box) where {__CONTEXT__<:TraceCtx}
-    ctx = __trace__.context
-    return Cassette.unbox(ctx, x)
-end
 
 # Define a Cassette pass to insert asserts after branches
-function insertasserts(@nospecialize(signature), method_body)
-    code = method_body.code
-    new_code = Any[]
-    for stmnt in code
-        Cassette.replace_match!(x-> Base.Meta.isexpr(x, :gotoifnot), stmnt) do goto
-            arg = goto.args[1]
-            assert_stmnt = :($assert($arg))
-            push!(new_code, assert_stmnt)
-        end
-        push!(new_code, stmnt)
-    end
-    method_body.code = new_code
-    return method_body
+function insertasserts(::Type{<:TraceCtx}, ::Type{S}, ir::Core.CodeInfo) where {S}
+    locations = Int[]
+    Cassette.insert_statements!(ir.code, ir.codelocs,
+        (stmt, i) -> Base.Meta.isexpr(stmt, :gotoifnot) ? 2 : nothing, 
+        (stmt, i) -> [:($assert($(stmt.args[1]))),stmt])
+    return ir
+
 end
 
-const InsertAssertsPass = Cassette.@pass(insertasserts)
+const InsertAssertsPass = Cassette.@pass insertasserts
+
+# We can't use primitives since otherwise our tracer won't trace assert and prove statements 
+# Which is the entire point.
+function Cassette.execute(ctx::TraceCtx, f::F, x::Tagged) where F <: Union{Core.typeof(assert), Core.typeof(prove)}
+    call = Callsite(f, record((x, ), ctx))
+    retval = untag(x, ctx)
+    call.retval = Some(retval)
+    push!(ctx.metadata, call)
+    return retval 
+end

@@ -12,28 +12,25 @@ import ConcolicFuzzer: assert, prove
         return y
     end
 
-    val, symb, trace = concolic_execution(f2, 1);
+    val, symb, trace = execute(f2, 1);
 
     @test val == -9
     @test symb == true
     @test length(ConcolicFuzzer.flatten(trace)) == 3
 
-
-
-
     sanity_f1(x) = x * 2
     sanity_f2(x) = x ÷ 2
     sanity_f3(x) = (x ÷ 2) * 4 + 3
     
-    val, symb, trace = concolic_execution(sanity_f1, 10)
+    val, symb, trace = execute(sanity_f1, 10)
     @test val == 20
     @test symb
 
-    val, symb, trace = concolic_execution(sanity_f2, 10)
+    val, symb, trace = execute(sanity_f2, 10)
     @test val == 5
     @test symb
 
-    val, symb, trace = concolic_execution(sanity_f3, 10)
+    val, symb, trace = execute(sanity_f3, 10)
     @test val == 23
     @test symb
 end
@@ -72,7 +69,7 @@ end
         return y
     end
 
-    val, symb, trace = concolic_execution(f, 1);
+    val, symb, trace = execute(f, 1);
 
     @test val == -9
     @test symb == true
@@ -86,12 +83,12 @@ end
         end
     end
 
-    val, symb, trace = concolic_execution(g, 1);
+    val, symb, trace = execute(g, 1);
 
     @test val == 12
     @test symb == false
 
-    val, symb, trace = concolic_execution(g, 10);
+    val, symb, trace = execute(g, 10);
 
     @test val == 12
     @test symb == true
@@ -163,7 +160,7 @@ end
     function r1()
         return rand(Int)
     end
-    val, symb, trace = concolic_execution(r1);
+    val, symb, trace = execute(r1);
     @test symb == true
 
     function r2()
@@ -175,10 +172,10 @@ end
         end
     end
 
-    val, symb, trace = concolic_execution(r2, rands = [9]);
+    val, symb, trace = execute(r2, rands = [9]);
     @test val == 1337
 
-    val, symb, trace = concolic_execution(r2, rands = [12]);
+    val, symb, trace = execute(r2, rands = [12]);
     @test val == 42
 
     function r3()
@@ -191,10 +188,10 @@ end
         return 12
     end
 
-    val, symb, trace = concolic_execution(r3, rands = [3, 4]);
+    val, symb, trace = execute(r3, rands = [3, 4]);
     @test val == 42
 
-    val, symb, trace = concolic_execution(r3, rands = [10, 0]);
+    val, symb, trace = execute(r3, rands = [10, 0]);
     @test val == 12
 end
 
@@ -208,7 +205,7 @@ end
         end
         acc
     end
-    val, symb, trace = concolic_execution(hh0, 1);
+    val, symb, trace = execute(hh0, 1);
     @test val == 10
     @test symb == true
     @test length(ConcolicFuzzer.filter(trace)) == 10
@@ -223,7 +220,7 @@ end
         acc
     end
 
-    val, symb, trace = concolic_execution(hh1, 10);
+    val, symb, trace = execute(hh1, 10);
     @test val == 10
     @test symb == false
     @test length(ConcolicFuzzer.filter(trace)) == 22 
@@ -268,12 +265,12 @@ end
         a = A(x)
         return a.x
     end
-    val, symb, trace = concolic_execution(propagate, 10);
+    val, symb, trace = execute(propagate, 10);
     @test val == 10
     @test symb == true
 
     range() = 1:10
-    val, symb, trace = concolic_execution(range);
+    val, symb, trace = execute(range);
     @test symb == false
 end
 
@@ -295,7 +292,7 @@ end
         return acc
     end
 
-    val, symb, trace = concolic_execution(h0);
+    val, symb, trace = execute(h0);
     @test val == 10
     @test symb == false
 
@@ -307,7 +304,7 @@ end
         return acc
     end
 
-    val, symb, trace = concolic_execution(h1, 1);
+    val, symb, trace = execute(h1, 1);
     @test val == 10
     @test symb == true
     @test length(ConcolicFuzzer.filter(trace)) == 10
@@ -320,7 +317,7 @@ end
     #     return acc
     # end
 
-    # val, symb, trace = concolic_execution(h2, 10);
+    # val, symb, trace = execute(h2, 10);
     # @test val == 10
     # @test symb == false
     # @test_broken length(ConcolicFuzzer.filter(trace)) == 25
@@ -333,7 +330,7 @@ end
     #     return acc
     # end
 
-    # val, symb, trace = concolic_execution(h3, 10);
+    # val, symb, trace = execute(h3, 10);
     # @test val == 55 
     # @test_broken symb == true
 end

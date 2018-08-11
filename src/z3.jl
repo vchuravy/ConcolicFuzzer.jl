@@ -7,7 +7,7 @@
 # toZ3(s::Sym) = Z3.Var(toZ3Type(s._type), name = string(s.name))
 # toZ3(c::T) where {T<:Real} = Z3.NumeralAst(toZ3Type(T), c)
 
-# function symbolic(t::Trace)
+# function symbolic(tCallsite)
 #     stream = filter(t)
 #     @assert isempty(t.stack)
 #     @assert length(t.current) == 1
@@ -64,31 +64,47 @@ toZ3(x::Integer) = "(_ bv$x $(nbits(typeof(x))))"
 toZ3(x::Bool) = string(x)
 toZ3(x) = error("toZ3 for $x is not a thing yet")
 
-FtoZ3(f::Function, ::Type{T}) where T = error("Can't handle $f for $T yet")
-FtoZ3(::typeof(Base.:-), ::Type{<:Integer}) = "bvsub"
-FtoZ3(::typeof(Base.:+), ::Type{<:Integer}) = "bvadd"
-FtoZ3(::typeof(Base.:*), ::Type{<:Integer}) = "bvmul"
-FtoZ3(::typeof(Base.div), ::Type{<:Signed}) = "bvsdiv"
-FtoZ3(::typeof(Base.div), ::Type{<:Unsigned}) = "bvudiv"
-FtoZ3(::typeof(Base.:<), ::Type{<:Signed}) = "bvslt"
-FtoZ3(::typeof(Base.:<), ::Type{<:Unsigned}) = "bvult"
-FtoZ3(::typeof(Base.:<=), ::Type{<:Signed}) = "bvsle"
-FtoZ3(::typeof(Base.:<=), ::Type{<:Unsigned}) = "bvule"
-FtoZ3(::typeof(Base.:>), ::Type{<:Signed}) = "bvsgt"
-FtoZ3(::typeof(Base.:>), ::Type{<:Unsigned}) = "bvugt"
-FtoZ3(::typeof(Base.:>=), ::Type{<:Signed}) = "bvsge"
-FtoZ3(::typeof(Base.:>=), ::Type{<:Unsigned}) = "bvuge"
+FtoZ3(f::Function) where T = error("Can't handle $f yet")
+FtoZ3(::typeof(Base.ifelse)) = "ite"
+FtoZ3(::typeof(Base.:(===))) = "="
 #FtoZ3(::typeof(Base.:(==)), ::Type{<:Integer}) = "bveq"
 #FtoZ3(::typeof(Base.:(==)), ::Type{Bool}) = "="
-FtoZ3(::typeof(Base.:(==)), ::Type{<:Any}) = "="
-FtoZ3(::typeof(Base.ifelse), ::Type{<:Any}) = "ite"
+
+function FtoZ3(f::Core.IntrinsicFunction)
+    if f === Core.Intrinsics.sub_int
+        return "bvsub"
+    elseif f === Core.Intrinsics.add_int
+        return "bvadd"
+    elseif f === Core.Intrinsics.mul_int
+        return "bvmul"
+    elseif f === Core.Intrinsics.sdiv_int ||
+           f === Core.Intrinsics.checked_sdiv_int 
+        return "bvudiv"
+    elseif f === Core.Intrinsics.sdiv_int
+        return "bvudiv"
+    elseif f === Core.Intrinsics.udiv_int
+        return "bvsdiv"
+    elseif f === Core.Intrinsics.slt_int
+        return "bvslt"
+    elseif f === Core.Intrinsics.ult_int
+        return "bvult"
+    elseif f === Core.Intrinsics.sle_int
+        return "bvsle"
+    elseif f === Core.Intrinsics.ule_int
+        return "bvule"
+    elseif f === Core.Intrinsics.not_int
+        return "bvnot"
+    elseif f === Core.Intrinsics.and_int
+        return "bvand"
+    else
+        error("Can't handle IntrinsicFunction $f yet")
+    end
+end
 
 validName(name) = "|$(name)|"
 declaration(s::Sym) = "(declare-const $(validName(s.name)) $(toZ3(s._type)))"
 
-function symbolic(t::Trace)
-    @assert isempty(t.stack)
-    @assert length(t.current) == 1
+function symbolic(t::Callsite)
     return symbolic(filter(t))
 end
 
@@ -116,6 +132,7 @@ function symbolic(stream)
     getZ3(c) = toZ3(c)
 
     for (f, ret, args) in stream
+        ret = anything(ret)
         z3args = join(map(getZ3, args), " ")
         if f == assert || f == prove
             @assert length(args) == 1
@@ -128,9 +145,7 @@ function symbolic(stream)
             stmt = "(assert $stmt)"
         else
             @assert ret isa Sym
-            # HACK!
-            T = reduce(promote_type, map(Tunbox, args))
-            z3f = FtoZ3(f, T)
+            z3f = FtoZ3(f)
             z3ret = getZ3(ret)
             stmt = "(assert (= $z3ret ($z3f $z3args)))"
         end

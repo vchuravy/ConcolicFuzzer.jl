@@ -1,0 +1,14 @@
+name = "ConcolicFuzzer"
+uuid = "4e659b32-9d65-11e8-0a15-6335324c5f87"
+authors = ["Valentin Churavy <v.churavy@gmail.com>"]
+version = "0.0.1"
+
+[deps]
+Cassette = "7057c7e9-c182-5462-911a-8362d720325c"
+InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
