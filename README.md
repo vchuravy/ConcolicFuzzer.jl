@@ -28,7 +28,7 @@ no gurantees what so ever are given.
 
 # Limitations
 
-*  Currently functions need to be manually annotated as leaf-functions for the taint analysis (see `src/tain.jl`).
+*  Currently functions need to be manually annotated as leaf-functions for the taint analysis (see `src/taint.jl`).
    I would like to support generic taint of functions with the only leaf functions being Julia runtime intrinsics and built-ins.
    This requires recursive trace generation.
 * Currently doesn't handle floats.
