@@ -10,7 +10,7 @@ no gurantees what so ever are given.
 - Cassette.jl from https://github.com/vchuravy/Cassette.jl/tree/vc/iftransform
 
 # Features
-* Able to generate a trace of an arbitrary Julia progra.
+* Able to generate a trace of an arbitrary Julia program.
   A trace is an execution of a whole program, with linearised control-flow
 * We are able to "taint" input variables to generate traces that are concolic in nature
 * Can manually assert conditions
