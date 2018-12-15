@@ -43,7 +43,7 @@ function Cassette.execute(ctx::TraceCtx{Callsite, <:Cassette.Tag}, f::Core.Intri
 end
 
 ##
-# Recursivly trace though our program. 
+# Recursivly trace though our program.
 #
 # Note: This won't trace functions that are defined primitive and there are several
 #       fallbacks that Cassette provides for tagged contexts.
@@ -56,7 +56,7 @@ function Cassette.execute(ctx::TraceCtx, f, args...)
     call = Callsite(f, record(args, ctx))
     push!(ctx.metadata, call)
 
-    # Recurse into the next function 
+    # Recurse into the next function
     retval = if canoverdub(ctx, f, args...)
         newctx = similarcontext(ctx, metadata = call)
         Cassette.overdub(newctx, f, args...)

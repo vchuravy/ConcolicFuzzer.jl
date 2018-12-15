@@ -61,9 +61,14 @@ function verify(t::Callsite, merciless=false)
     topmost = t.f
     recurse(t) do call, depth
         if any(a->isa(a, Sym), call.args) && !isa(anything(call.retval), Sym)
-            if typeof(call.f) <: Core.Builtin && !merciless
-                return
+            if !merciless
+                typeof(call.f) <: Core.Builtin && return
+
+                # Check if tagged is only a type variable, like in `convert(Sym{T}, x)`
+                syms = (a for a in call.args if isa(a, Sym))
+                all(s->s._type == DataType, syms) && return
             end
+
             if call.f == topmost || call.f ∈ FUNCTIONS_TO_IGNORE
                 return
             end
