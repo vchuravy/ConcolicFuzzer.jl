@@ -36,20 +36,21 @@ For more information see `check`.
 prove(x::Bool) = x
 
 # Define a Cassette pass to insert asserts after branches
-function insertasserts(::Type{<:TraceCtx}, ::Type{S}, ir::Core.CodeInfo) where {S}
+function insertasserts(ctx, ref)
+    ir = ref.code_info
     locations = Int[]
     Cassette.insert_statements!(ir.code, ir.codelocs,
         (stmt, i) -> Base.Meta.isexpr(stmt, :gotoifnot) ? 2 : nothing, 
         (stmt, i) -> [:($assert($(stmt.args[1]))),stmt])
+    ir.ssavaluetypes = length(ir.code)
     return ir
-
 end
 
 const InsertAssertsPass = Cassette.@pass insertasserts
 
 # We can't use primitives since otherwise our tracer won't trace assert and prove statements 
 # Which is the entire point.
-function Cassette.execute(ctx::TraceCtx, f::F, x::Tagged) where F <: Union{Core.typeof(assert), Core.typeof(prove)}
+function Cassette.overdub(ctx::TraceCtx, f::F, x::Tagged) where F <: Union{Core.typeof(assert), Core.typeof(prove)}
     call = Callsite(f, record((x, ), ctx))
     retval = untag(x, ctx)
     call.retval = Some(retval)

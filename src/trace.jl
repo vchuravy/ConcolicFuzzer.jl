@@ -31,7 +31,7 @@ Base.push!(trace::Callsite, call::Callsite) = push!(trace.children, call)
 # We need to manually override for IntrinsicFunctions (which are the leaf-nodes we are interested in)
 # Since in tagged contexts there is an automatic fallback available.
 ##
-function Cassette.execute(ctx::TraceCtx{Callsite, <:Cassette.Tag}, f::Core.IntrinsicFunction, args...)
+function Cassette.overdub(ctx::TraceCtx{Callsite, <:Cassette.Tag}, f::Core.IntrinsicFunction, args...)
     call = Callsite(f, record(args, ctx))
     push!(ctx.metadata, call)
     retval = fallback(ctx, f, args...)
@@ -50,16 +50,16 @@ end
 #
 # Question: Shouldn't canoverdub for primitives be false?
 ##
-function Cassette.execute(ctx::TraceCtx, f, args...)
+function Cassette.overdub(ctx::TraceCtx, f, args...)
     # We need to push the callsite first into metadata
     # otherwise we run into issues with functions that throw errors
     call = Callsite(f, record(args, ctx))
     push!(ctx.metadata, call)
 
     # Recurse into the next function
-    retval = if canoverdub(ctx, f, args...)
+    retval = if canrecurse(ctx, f, args...)
         newctx = similarcontext(ctx, metadata = call)
-        Cassette.overdub(newctx, f, args...)
+        Cassette.recurse(newctx, f, args...)
     else
         retval = fallback(ctx, f, args...)
         # If any of our inputs was tagged we want to tag the return value so that

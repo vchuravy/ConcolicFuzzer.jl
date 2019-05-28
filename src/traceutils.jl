@@ -72,7 +72,7 @@ function verify(t::Callsite, merciless=false)
             if call.f == topmost || call.f ∈ FUNCTIONS_TO_IGNORE
                 return
             end
-            @warn "Function $(call.f) did not propagate taint, $((call.retval, call.args))"
+            @warn "Function did not propagate taint" call.f, call.retval, call.args
         end
         return
     end

@@ -8,7 +8,7 @@ export execute, check, fuzz, fuzz_wargs, fuzz_and_check
 # a particular trace depending on the concrete input arguments.
 using Cassette
 using Cassette: Tagged, tag, untag, istagged, metadata, hasmetadata,
-                enabletagging, overdub, canoverdub, similarcontext, fallback
+                enabletagging, overdub, canrecurse, similarcontext, fallback
 
 Cassette.@context TraceCtx
 
@@ -44,9 +44,8 @@ function execute(f, args...; rands = Any[])
     # Unpack the trace
     @assert length(trace) == 1
     trace = trace[1]
-    @assert trace.f === Core._apply
-    @assert length(trace.children) == 1
-    trace = first(trace.children) 
+    # @assert length(trace.children) == 1
+    # trace = first(trace.children) 
     verify(trace)
 
     if istagged(y, ctx)
