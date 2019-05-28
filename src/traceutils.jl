@@ -72,7 +72,7 @@ function verify(t::Callsite, merciless=false)
             if call.f == topmost || call.f ∈ FUNCTIONS_TO_IGNORE
                 return
             end
-            @warn "Function did not propagate taint" call.f, call.retval, call.args
+            @warn "Function $(call.f) did not propagate taint ($(call.retval), $(call.args)))"
         end
         return
     end
@@ -83,7 +83,7 @@ function Base.show(io::IO, t::Callsite)
     recurse(t) do call, depth
         base = "  "^depth
         write(io, base)
-        print(io, call.retval)
+        show(io, call.retval)
         write(io, " ⇐ ")
         println(io, call.f, call.args)
         return
