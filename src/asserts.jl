@@ -41,7 +41,29 @@ function insertasserts(ctx, ref)
     locations = Int[]
     Cassette.insert_statements!(ir.code, ir.codelocs,
         (stmt, i) -> Base.Meta.isexpr(stmt, :gotoifnot) ? 2 : nothing, 
-        (stmt, i) -> [:($assert($(stmt.args[1]))),stmt])
+        (stmt, i) -> [
+            Expr(:call, Expr(:nooverdub, GlobalRef(ConcolicFuzzer, :assert)), stmt.args[1]),
+            stmt
+        ])
+
+    # Taint foreigncalls
+    # TODO: llvmcall
+    Cassette.insert_statements!(ir.code, ir.codelocs,
+        (stmt, i) -> begin
+            stmt = Base.Meta.isexpr(stmt, :(=) ? stmt.args[2] : stmt)
+            Base.Meta.isexpr(stmt, :foreigncall) ? 4 : nothing
+        end
+        (stmt, i) -> begin
+            typestmt = Expr(:call, Expr(:nooverdub, GlobalRef(Core, :typeof)), Core.SSAValue(i))
+            symstmt = Expr(:call, Expr(:nooverdub, GlobalRef(ConcolicFuzzer, :Sym)), :fval, Core.SSAValue(i+1))
+            tagstmt = Expr(:call, Expr(:nooverdub, GlobalRef(Cassette, :tag), Core.SSAValue(i), Expr(:contextslot), Core.SSAValue(i+2)))
+
+            if Base.Meta.isexpr(stmt, :(=))
+                tagstmt = Expr(:(=), stmt.args[1], tagstmt)
+                stmt = stmt.args[2]
+            end
+            [stmt, typestmt, symstmt, tagstmt]
+        end)
     ir.ssavaluetypes = length(ir.code)
     return ir
 end
