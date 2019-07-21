@@ -85,7 +85,9 @@ function Base.show(io::IO, t::Callsite)
         write(io, base)
         show(io, call.retval)
         write(io, " ⇐ ")
-        println(io, call.f, call.args)
+        show(io, call.f)
+        show(io, call.args)
+        println(io)
         return
     end
     return nothing
