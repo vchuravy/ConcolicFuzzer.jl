@@ -73,9 +73,11 @@ function augment(record, subs)
     return substitutions
 end
 
+remove_frames!(stack, name) = splice!(stack, 1:something(findlast(frame -> frame.func == name, stack), 0))
+
 function Cassette.overdub(ctx::TraceCtx, ::typeof(rand), ::Type{T}) where T<:INTEGERS
     stack = StackTraces.stacktrace()
-    loc = StackTraces.remove_frames!(stack, :execute)
+    loc = remove_frames!(stack, :execute)
     val, sym = record!(ctx, loc, T)
     if val === nothing
         val = rand(T)

@@ -44,13 +44,11 @@ function execute(f, args...; subs = nothing)
         tag(arg, ctx, sym)
     end
     y = try
-        @debug "Executing " f tagged_args
         Cassette.overdub(ctx, f, tagged_args...)
     catch err
         err
     end
 
-    @debug "Metadata" metadata
     trace = metadata.trace
     # Unpack the trace
     @assert trace.f === :toplevel
