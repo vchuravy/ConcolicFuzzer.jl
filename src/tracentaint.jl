@@ -30,27 +30,24 @@ Base.push!(trace::Callsite, call::Callsite) = push!(trace.children, call)
 struct Metadata
     trace::Callsite
     # For current execution
-    record::Dict{Vector{StackFrame}, Vector{Sym}}
-    substitutes::Dict{Vector{StackFrame}, Vector{Any}}
+    record::Vector{Sym}
+    substitutes::Dict{DataType, Any}
 end
 Metadata() = Metadata(
     Callsite(:toplevel, ()), 
-    Dict{Vector{StackFrame}, Vector{Sym}}(), 
-    Dict{Vector{StackFrame}, Vector{Any}}())
+    Vector{Sym}(), 
+    Dict{DataType, Vector}())
 
 Metadata(m::Metadata, call::Callsite) = Metadata(call, m.record, m.substitutes)
-Metadata(subs) = Metadata(Callsite(:toplevel, ()), Dict{Vector{StackFrame}, Vector{Sym}}(), subs)
+Metadata(subs) = Metadata(Callsite(:toplevel, ()), Vector{Sym}(), subs)
 
-function record!(ctx, loc, type)
+function record!(ctx, type)
     m = ctx.metadata
     sym = Sym(:fval, type)
-    if !haskey(m.record, loc)
-        m.record[loc] = Vector{Sym}()
-    end
-    push!(m.record[loc], sym)
+    push!(m.record, sym)
 
-    if haskey(m.substitutes, loc)
-        subs = m.substitutes[loc]
+    if haskey(m.substitutes, type)
+        subs = m.substitutes[type]
         if !isempty(subs)
             return pop!(subs), sym
         end
@@ -60,29 +57,27 @@ end
 Base.push!(m::Metadata, call) = push!(m.trace, call)
 
 function augment(record, subs)
-    substitutions = Dict{Vector{StackFrame}, Vector{Any}}()
-    for (loc, symbols) in record
-        values = Any[]
-        for symbol in symbols
-            if haskey(subs, symbol)
-                push!(values, subs[symbol])
-            end
+    substitutions = Dict{DataType, Vector}()
+    function insert!(type, val)
+        if !haskey(substitutions, type)
+            substitutions[type] = Vector{type}()
         end
-        substitutions[loc] = values
+        push!(substitutions[type], val)
+    end
+
+    for sym in record
+        symbol = sym.name
+        insert!(sym._type, subs[sym.name])
     end
     return substitutions
 end
 
-remove_frames!(stack, name) = splice!(stack, 1:something(findlast(frame -> frame.func == name, stack), 0))
-
 function Cassette.overdub(ctx::TraceCtx, ::typeof(rand), ::Type{T}) where T<:INTEGERS
-    stack = StackTraces.stacktrace()
-    loc = remove_frames!(stack, :execute)
-    val, sym = record!(ctx, loc, T)
+    val, sym = record!(ctx, T)
     if val === nothing
         val = rand(T)
     end
-    return tag(val, ctx, sym)
+    return tag(val::T, ctx, sym)
 end
 
 ##

@@ -156,44 +156,51 @@ end
     @test length(tested) == 4
 end
 
-# @testset "Randomness" begin
-#     function r1()
-#         return rand(Int)
-#     end
-#     val, symb, trace = execute(r1);
-#     @test symb == true
-# 
-#     function r2()
-#         x = rand(Int)
-#         if x < 10
-#             return 1337
-#         else
-#             return 42
-#         end
-#     end
-# 
-#     val, symb, trace = execute(r2, rands = [9]);
-#     @test val == 1337
-# 
-#     val, symb, trace = execute(r2, rands = [12]);
-#     @test val == 42
-# 
-#     function r3()
-#         x = rand(Int)
-#         y = rand(Int)
-# 
-#         if x + y < 10
-#             return 42
-#         end
-#         return 12
-#     end
-# 
-#     val, symb, trace = execute(r3, rands = [3, 4]);
-#     @test val == 42
-# 
-#     val, symb, trace = execute(r3, rands = [10, 0]);
-#     @test val == 12
-# end
+@testset "Randomness" begin
+    function r1()
+        return rand(Int)
+    end
+    val, symb, trace, record = execute(r1);
+    @test symb == true
+
+    function r2()
+        x = rand(Int)
+        if x < 10
+            return 1337
+        else
+            return 42
+        end
+    end
+
+    val, symb, trace, record = execute(r2);
+
+    subs = Dict(Int64 => Int64[1])
+    val, symb, trace, record = execute(r2, subs=subs);
+    @test val == 1337
+
+    subs = Dict(Int64 => Int64[12])
+    val, symb, trace, record = execute(r2, subs = subs);
+    @test val == 42
+
+    function r3()
+        x = rand(Int)
+        y = rand(Int)
+
+        if x + y < 10
+            return 42
+        end
+        return 12
+    end
+    val, symb, trace, record = execute(r3);
+
+    subs = Dict(Int64 => Int64[1, 2])
+    val, symb, trace, record = execute(r3, subs = subs);
+    @test val == 42
+
+    subs = Dict(Int64 => Int64[6, 7])
+    val, symb, trace, record = execute(r3, subs = subs);
+    @test val == 12
+end
 
 @testset "Simple Loops" begin
     function hh0(x)
