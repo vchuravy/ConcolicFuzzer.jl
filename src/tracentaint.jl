@@ -91,7 +91,7 @@ function Cassette.overdub(ctx::TraceCtx{Metadata, <:Cassette.Tag}, f::Core.Intri
     if any(a -> istagged(a, ctx), args)
         retval = tag(retval, ctx, Sym(typeof(retval)))
     end
-    call.retval = Some(istagged(retval, ctx) ? metadata(retval, ctx) : ctx)
+    call.retval = Some(istagged(retval, ctx) ? metadata(retval, ctx) : retval)
     return retval
 end
 
@@ -122,6 +122,6 @@ function Cassette.overdub(ctx::TraceCtx, f, args...)
         end
         retval
     end
-    call.retval = Some(istagged(retval, ctx) ? metadata(retval, ctx) : ctx)
+    call.retval = Some(istagged(retval, ctx) ? metadata(retval, ctx) : retval)
     return retval
 end
