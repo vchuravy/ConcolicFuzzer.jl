@@ -281,14 +281,20 @@ end
     @test symb == false
 end
 
-# @testset "Arrays" begin
-# function store_and_read(x)
-#     A = Array{Int, 1}(10)
-#     A[5] = x
-#     x = 0 # Destroy symbol character of x
-#     return A[5]
-#  end
-# end
+@testset "Arrays" begin
+    function store_and_read(x, i, j)
+        A = Array{Int}(undef, 10)
+        A[i] = x
+        x = 0 # Destroy symbol character of x
+        return A[j]
+    end
+    val, symb, trace = execute((x)->store_and_read(x, 5, 5), 1);
+    @test val == 1
+    @test symb == true
+
+    val, symb, trace = execute((x)->store_and_read(x, 1, 7), 1);
+    @test symb == false
+end
 
 @testset "Complex Loops" begin
     function h0()
@@ -316,30 +322,30 @@ end
     @test symb == true
     @test length(ConcolicFuzzer.filter(trace)) == 10
 
-    # function h2(N)
-    #     acc = 0
-    #     for i in 1:N
-    #         acc += 1
-    #     end
-    #     return acc
-    # end
+    function h2(N)
+        acc = 0
+        for i in 1:N
+            acc += 1
+        end
+        return acc
+    end
 
-    # val, symb, trace = execute(h2, 10);
-    # @test val == 10
-    # @test symb == false
-    # @test_broken length(ConcolicFuzzer.filter(trace)) == 25
+    val, symb, trace = execute(h2, 10);
+    @test val == 10
+    @test symb == false
+    @test_broken length(ConcolicFuzzer.filter(trace)) == 25
 
-    # function h3(N)
-    #     acc = 0
-    #     for i in 1:N
-    #         acc += i
-    #     end
-    #     return acc
-    # end
+    function h3(N)
+        acc = 0
+        for i in 1:N
+            acc += i
+        end
+        return acc
+    end
 
-    # val, symb, trace = execute(h3, 10);
-    # @test val == 55 
-    # @test_broken symb == true
+    val, symb, trace = execute(h3, 10);
+    @test val == 55 
+    @test symb == true
 end
 
 # @testset "Fuzz supported datatypes" begin
