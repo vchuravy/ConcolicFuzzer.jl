@@ -27,11 +27,67 @@ mutable struct Callsite
 end
 Base.push!(trace::Callsite, call::Callsite) = push!(trace.children, call)
 
+struct Metadata
+    trace::Callsite
+    # For current execution
+    record::Dict{Vector{StackFrame}, Vector{Sym}}
+    substitutes::Dict{Vector{StackFrame}, Vector{Any}}
+end
+Metadata() = Metadata(
+    Callsite(:toplevel, ()), 
+    Dict{Vector{StackFrame}, Vector{Sym}}(), 
+    Dict{Vector{StackFrame}, Vector{Any}}())
+
+Metadata(m::Metadata, call::Callsite) = Metadata(call, m.record, m.substitutes)
+Metadata(subs) = Metadata(Callsite(:toplevel, ()), Dict{Vector{StackFrame}, Vector{Sym}}(), subs)
+
+function record!(ctx, loc, type)
+    m = ctx.metadata
+    sym = Sym(:fval, type)
+    if !haskey(m.record, loc)
+        m.record[loc] = Vector{Sym}()
+    end
+    push!(m.record[loc], sym)
+
+    if haskey(m.substitutes, loc)
+        subs = m.substitutes[loc]
+        if !isempty(subs)
+            return pop!(subs), sym
+        end
+    end
+    return nothing, sym
+end
+Base.push!(m::Metadata, call) = push!(m.trace, call)
+
+function augment(record, subs)
+    substitutions = Dict{Vector{StackFrame}, Vector{Any}}()
+    for (loc, symbols) in record
+        values = Any[]
+        for symbol in symbols
+            if haskey(subs, symbol)
+                push!(values, subs[symbol])
+            end
+        end
+        substitutions[loc] = values
+    end
+    return substitutions
+end
+
+function Cassette.overdub(ctx::TraceCtx, ::typeof(rand), ::Type{T}) where T<:INTEGERS
+    stack = StackTraces.stacktrace()
+    loc = StackTraces.remove_frames!(stack, :execute)
+    val, sym = record!(ctx, loc, T)
+    if val === nothing
+        val = rand(T)
+    end
+    return tag(val, ctx, sym)
+end
+
 ##
 # We need to manually override for IntrinsicFunctions (which are the leaf-nodes we are interested in)
 # Since in tagged contexts there is an automatic fallback available.
 ##
-function Cassette.overdub(ctx::TraceCtx{Callsite, <:Cassette.Tag}, f::Core.IntrinsicFunction, args...)
+function Cassette.overdub(ctx::TraceCtx{Metadata, <:Cassette.Tag}, f::Core.IntrinsicFunction, args...)
     call = Callsite(f, record(args, ctx))
     push!(ctx.metadata, call)
     retval = fallback(ctx, f, args...)
@@ -58,7 +114,7 @@ function Cassette.overdub(ctx::TraceCtx, f, args...)
 
     # Recurse into the next function
     retval = if canrecurse(ctx, f, args...)
-        newctx = similarcontext(ctx, metadata = call)
+        newctx = similarcontext(ctx, metadata = Metadata(ctx.metadata, call))
         Cassette.recurse(newctx, f, args...)
     else
         retval = fallback(ctx, f, args...)

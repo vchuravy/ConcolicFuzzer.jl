@@ -35,6 +35,8 @@ For more information see `check`.
 """
 prove(x::Bool) = x
 
+nodub(f, args...) = Expr(:call, Expr(:nooverdub, f), args...)
+
 # Define a Cassette pass to insert asserts after branches
 function insertasserts(ctx, ref)
     ir = ref.code_info
@@ -42,28 +44,75 @@ function insertasserts(ctx, ref)
     Cassette.insert_statements!(ir.code, ir.codelocs,
         (stmt, i) -> Base.Meta.isexpr(stmt, :gotoifnot) ? 2 : nothing, 
         (stmt, i) -> [
-            Expr(:call, Expr(:nooverdub, GlobalRef(ConcolicFuzzer, :assert)), stmt.args[1]),
+            Expr(:call, ConcolicFuzzer.assert, stmt.args[1]),
             stmt
         ])
 
     # Taint foreigncalls
-    # TODO: llvmcall
+    # TODO: llvmcall, check if stmts.args[2] supported
+    # This works but is way to aggressive.
+    #=
     Cassette.insert_statements!(ir.code, ir.codelocs,
         (stmt, i) -> begin
-            stmt = Base.Meta.isexpr(stmt, :(=) ? stmt.args[2] : stmt)
-            Base.Meta.isexpr(stmt, :foreigncall) ? 4 : nothing
-        end
-        (stmt, i) -> begin
-            typestmt = Expr(:call, Expr(:nooverdub, GlobalRef(Core, :typeof)), Core.SSAValue(i))
-            symstmt = Expr(:call, Expr(:nooverdub, GlobalRef(ConcolicFuzzer, :Sym)), :fval, Core.SSAValue(i+1))
-            tagstmt = Expr(:call, Expr(:nooverdub, GlobalRef(Cassette, :tag), Core.SSAValue(i), Expr(:contextslot), Core.SSAValue(i+2)))
-
-            if Base.Meta.isexpr(stmt, :(=))
-                tagstmt = Expr(:(=), stmt.args[1], tagstmt)
-                stmt = stmt.args[2]
+            stmt = Base.Meta.isexpr(stmt, :(=)) ? stmt.args[2] : stmt
+            if Base.Meta.isexpr(stmt, :foreigncall) && supported(stmt.args[2])
+                12
+            else
+                nothing
             end
-            [stmt, typestmt, symstmt, tagstmt]
+        end,
+        (stmt, i) -> begin
+            if Base.Meta.isexpr(stmt, :(=))
+                tagstmt = Expr(:(=), stmt.args[1])
+                stmt = stmt.args[2]
+            else
+                tagstmt = nothing
+            end
+            # setup slot for if-else
+            slot = Core.SlotNumber(length(ir.slotflags) + 1)
+            push!(ir.slotflags, 0x10) # TODO check flag value
+            push!(ir.slotnames, gensym(:temp))
+            # obtain location as stacktrace
+            type = stmt.args[2]
+
+            # Helper to more easily create result
+            result = Any[]
+            insert!(stmt) = (id = i+length(result); push!(result, stmt); Core.SSAValue(id))
+
+            #=
+            stack = StackTraces.stacktrace()
+            loc = StackTraces.remove_frames!(stack, :execute)
+            val, sym = record!(ctx, loc, type)
+            if val === nothing
+                val = stmt
+            end
+            return tag(val, ctx, sym)
+            =#
+            stack  = insert!(nodub(StackTraces.stacktrace))
+            loc    = insert!(nodub(StackTraces.remove_frames!, stack, QuoteNode(:execute)))
+            record = insert!(nodub(ConcolicFuzzer.record!, Expr(:contextslot), loc, type))
+            val    = insert!(nodub(Base.getindex, record, 1))
+            sym    = insert!(nodub(Base.getindex, record, 2))
+            cond   = insert!(nodub(Core.:(===), val, nothing))
+            ifstmt = insert!(Expr(:gotoifnot, cond, #=fill in later=#))
+            bb1    = insert!(Expr(:(=), slot, stmt))
+            elstmt = insert!(Expr(:goto, #=fill in later=#))
+            bb2    = insert!(Expr(:(=), slot, val))
+            tag    = insert!(nodub(Cassette.tag, slot , Expr(:contextslot), sym))
+
+            # fixup if and else
+            push!(result[ifstmt.id - i + 1].args, bb2.id)
+            result[elstmt.id - i + 1] = Core.GotoNode(tag.id)
+
+            if tagstmt === nothing
+                push!(result, tag)
+            else
+                push!(tagstmt.args, tag)
+                push!(result, tagstmt)
+            end
+            return result
         end)
+    =#
     ir.ssavaluetypes = length(ir.code)
     return ir
 end

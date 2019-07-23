@@ -59,9 +59,11 @@ bitsToT(::Val{N}) where N = error("Can construct type with $N bits")
 
 toZ3(::Type{T}) where T<:Integer = "(_ BitVec $(nbits(T)))"
 toZ3(::Type{Bool})    = "Bool"
+# toZ3(::Type{BigInt})  = "Int"
 
 toZ3(x::Integer) = "(_ bv$x $(nbits(typeof(x))))"
 toZ3(x::Bool) = string(x)
+# toZ3(x::BigInt) = string(x)
 toZ3(x) = error("toZ3 for $x is not a thing yet")
 
 FtoZ3(f::Function) where T = error("Can't handle $f yet")
@@ -192,6 +194,8 @@ function fromz3type(typ)
         return Int
     elseif typ == "Bool"
         return Bool
+    # elseif typ == "BigInt"
+    #     return BigInt
     else
         r_typ = r"\(_ BitVec (\d{1,3})\)"
         m = match(r_typ, typ)
@@ -208,6 +212,8 @@ function fromz3val(T, val)
         return parse(Int, val)
     elseif T == Bool
         return parse(Bool, val)
+    # elseif T == BigInt
+    #     return parse(BigInt, val)
     else
         return parse(T, split(val)[2][3:end])
     end
@@ -236,11 +242,13 @@ function stringToType(_type)
         return UInt8
     elseif _type == "Bool"
         return Bool
+    # elseif _type == "BigInt"
+    #     return BigInt
     end
 end
 
 # This is really hacky, in reality we would want to properly parse
-# s-expr.
+# s-expr. See SExpressions.jl
 function parseZ3(model)
     lines = split(chomp(model), '\n')[2:end-1]
     @assert length(lines) % 2 == 0
@@ -259,12 +267,12 @@ function parseZ3(model)
         push!(inputs, (name, val))
     end
 
-    args = Any[]
-    rands = Any[]
+    args   = Any[]
+    subs   = Any[]
     others = Any[]
 
     r_arg = r"\|##arg_(\d+)#(\w+)#\d+\|"
-    r_rand = r"\|##rand#(\w+)#(\d+)\|"
+    r_fval = r"\|##fval#(\w+)#(\d+)\|"
     r_others = r"\|##(\w+)#\d+\|"
     for (name, val) in inputs
         m = match(r_arg, name)
@@ -277,14 +285,14 @@ function parseZ3(model)
             push!(args, (id, val))
             continue
         end
-        m = match(r_rand, name)
+        m = match(r_fval, name)
         if m !== nothing
             id = parse(Int, m.captures[2])
             T = stringToType(m.captures[1])
             if T <: Integer
                 val = val % T
             end
-            push!(rands, (id, val))
+            push!(subs, (id, val))
             continue
         end
         m = match(r_others, name)
@@ -298,7 +306,7 @@ function parseZ3(model)
         end
         @error "Can't parse $name for $val"
     end
-    args = Tuple(map(x -> x[2], sort(args))) # sort by id
-    rands = map(x -> x[2], sort(rands)) # sort by id
-    args, rands, others
+    args = Tuple(map(x -> x[2], sort(args, by=first))) # sort by id
+    subs = Dict(Pair(x[1], x[2]) for x in subs)
+    args, subs, others
 end

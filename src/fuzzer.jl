@@ -39,7 +39,7 @@ function checkStream(stream)
     if sat
        inputs = parseZ3(model)
     else
-        inputs = ()
+       inputs = ()
     end
 
     return sat, inputs
@@ -66,12 +66,11 @@ function concretize(T::Union{DataType, Union})
     return ctypes
 end
 
-
 supported(T::DataType)= false
 generate(T::DataType) = error("Can't generate values of $T")
 
-const INTEGERS = Union{Bool, Int128, UInt128, Int64, UInt64, Int32, UInt32, Int16, UInt16, Int8, UInt8}
 supported(::Type{T}) where T<:INTEGERS = true
+# generate(::Type{BigInt}) = rand(1:big(typemax(Int))^2)
 generate(::Type{T}) where T<:INTEGERS = rand(T)
 
 # UGLY HACK
@@ -96,6 +95,8 @@ function enumerateSupportedTypes(i)
       return Int8
     elseif i == 9
       return UInt8
+    # elseif i == 10
+    #   return BigInt
     else
       return Bool
     end
@@ -106,13 +107,13 @@ function fuzz(f, argtypes...; maxdepth = typemax(Int64))
     args_ctypes = map(x->Base.filter(supported, concretize(x)), argtypes)
     for types in Iterators.product(args_ctypes...)
         initial_args = map(generate, types)
-        push!(worklist, (0, initial_args, Any[]))
+        push!(worklist, (0, initial_args, nothing))
     end
     fuzz_worklist(f, worklist, maxdepth)
 end
 
 function fuzz_wargs(f, initial_args...; maxdepth = typemax(Int64))
-    worklist = Any[(0, initial_args, Any[])]
+    worklist = Any[(0, initial_args, nothing)]
     fuzz_worklist(f, worklist, maxdepth)
 end
 
@@ -126,13 +127,14 @@ function fuzz_worklist(f, worklist::Vector{Any}, maxdepth)
     errored = Any[]
 
     while !isempty(worklist)
-        depth, args, rands = pop!(worklist)
-        val, _, trace = execute(f, args...; rands = rands)
+        depth, args, subs = pop!(worklist)
+        @debug "Executing item from worklist" depth args subs
+        val, _, trace, record = execute(f, args...; subs = subs)
 
         if val isa Exception
-            push!(errored, (val, args, rands))
+            push!(errored, (val, args, subs))
         else
-            push!(tested, (val, args, rands))
+            push!(tested, (val, args, subs))
         end
 
         stream = filter(trace)
@@ -156,8 +158,10 @@ function fuzz_worklist(f, worklist::Vector{Any}, maxdepth)
                 continue
             end
             if sat
-                args, rands, _ = inputs
-                push!(worklist, (d, args, rands))
+                args, subs, _ = inputs
+                subs = augment(record, subs)
+                # record to subs
+                push!(worklist, (d, args, subs))
             end
         end
     end
