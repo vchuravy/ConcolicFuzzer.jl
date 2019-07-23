@@ -80,6 +80,11 @@ function Cassette.overdub(ctx::TraceCtx, ::typeof(rand), ::Type{T}) where T<:INT
     return tag(val::T, ctx, sym)
 end
 
+function Cassette.overdub(ctx::TraceCtx, ::typeof(oftype), x::Tagged, y)
+    x = untag(x, ctx)
+    return oftype(x, y)
+end
+
 ##
 # We need to manually override for IntrinsicFunctions (which are the leaf-nodes we are interested in)
 # Since in tagged contexts there is an automatic fallback available.
