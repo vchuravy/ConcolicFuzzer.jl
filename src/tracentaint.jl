@@ -80,6 +80,7 @@ function Cassette.overdub(ctx::TraceCtx, ::typeof(rand), ::Type{T}) where T<:INT
     return tag(val::T, ctx, sym)
 end
 
+# oftype will drop tag on the x value since we are only looking at it'd type.
 function Cassette.overdub(ctx::TraceCtx, ::typeof(oftype), x::Tagged, y)
     x = untag(x, ctx)
     return oftype(x, y)

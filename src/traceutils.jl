@@ -39,7 +39,9 @@ function filter(t::Callsite)
                 end
                 return
             end
-            push!(stream, (call.f, call.retval, call.args))
+            if (anything(call.retval) isa Sym) || call.f === assert || call.f === prove 
+                push!(stream, (call.f, call.retval, call.args))
+            end
         end
         return
     end

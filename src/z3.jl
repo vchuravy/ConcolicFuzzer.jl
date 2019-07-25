@@ -146,10 +146,18 @@ function symbolic(stream)
             end
             stmt = "(assert $stmt)"
         else
-            @assert ret isa Sym
-            z3f = FtoZ3(f)
-            z3ret = getZ3(ret)
-            stmt = "(assert (= $z3ret ($z3f $z3args)))"
+            if !(ret isa Sym)
+                @error "ret is not a Sym" ret f
+            end
+            if f === Core.Intrinsics.bitcast
+                z3ret = getZ3(ret)
+                z3arg = getZ3(args[2])
+                stmt = "(assert (= $z3ret $z3arg))"
+            else
+                z3f = FtoZ3(f)
+                z3ret = getZ3(ret)
+                stmt = "(assert (= $z3ret ($z3f $z3args)))"
+            end
         end
         println(model, stmt)
     end
