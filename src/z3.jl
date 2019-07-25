@@ -300,7 +300,8 @@ function parseZ3(model)
             if T <: Integer
                 val = val % T
             end
-            push!(subs, (id, val))
+            sym = Symbol("##fval#", m.captures[1], "#", m.captures[2])
+            push!(subs, (sym, val))
             continue
         end
         m = match(r_others, name)

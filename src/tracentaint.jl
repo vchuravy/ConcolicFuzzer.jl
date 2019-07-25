@@ -66,7 +66,6 @@ function augment(record, subs)
     end
 
     for sym in record
-        symbol = sym.name
         insert!(sym._type, subs[sym.name])
     end
     return substitutions

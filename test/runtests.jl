@@ -200,6 +200,8 @@ end
     subs = Dict(Int64 => Int64[6, 7])
     val, symb, trace, record = execute(r3, subs = subs);
     @test val == 12
+
+    tested, errored = fuzz(r3)
 end
 
 @testset "Simple Loops" begin
